@@ -284,46 +284,19 @@ class Statevec(DenseState):
         )
 
     def _expectation(self, gate: cp.ndarray, targets: list[int]) -> complex:
-        """Compute [psi|gate|psi] via ``custatevec.compute_expectation``."""
+        """Compute [psi|gate|psi] via cupy (GPU-accelerated).
+
+        Makes a copy of the state, applies the gate (via cuQuantum), and
+        computes the inner product on GPU.
+        """
         n = self._nqubit
         if n == 0:
             return 1.0 + 0.0j
-        active = self.psi[: 1 << n]
-        t = _msb_to_lsb(targets, n)
-        h = _handle()
-
-        result = cp.zeros(1, dtype=cp.complex128)
-        n_basis_bits = len(t)
-
-        ws_size = custatevec.compute_expectation_get_workspace_size(
-            h,
-            _SV_DTYPE,
-            n,
-            gate.data.ptr,
-            _SV_DTYPE,
-            _LAYOUT,
-            n_basis_bits,
-            _COMPUTE,
-        )
-        ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
-
-        custatevec.compute_expectation(
-            h,
-            active.data.ptr,
-            _SV_DTYPE,
-            n,
-            result.data.ptr,
-            _SV_DTYPE,
-            gate.data.ptr,
-            _SV_DTYPE,
-            _LAYOUT,
-            t,
-            n_basis_bits,
-            _COMPUTE,
-            ws.data.ptr if ws_size > 0 else 0,
-            ws_size,
-        )
-        return complex(float(cp.real(result[0])), float(cp.imag(result[0])))
+        saved = self.psi[: 1 << n].copy()
+        self._apply_matrix(gate, targets)
+        inner = float(cp.dot(self.psi[: 1 << n].conj(), saved))
+        self.psi[: 1 << n] = saved
+        return complex(inner)
 
     # -- helpers --------------------------------------------------------- #
 
