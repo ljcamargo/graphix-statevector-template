@@ -17,6 +17,19 @@ from numpy.random import Generator
 
 from graphix_statevec_cuquantum import Statevec, StatevectorBackend
 
+
+def _gpu_available() -> bool:
+    """Check if a CUDA GPU is available for testing."""
+    try:
+        import cupy as cp  # noqa: PLC0415
+
+        cp.zeros(1)
+    except Exception:  # noqa: BLE001
+        return False
+    else:
+        return True
+
+
 if TYPE_CHECKING:
     from graphix.states import State
     from numpy.random import PCG64
@@ -29,6 +42,7 @@ def generate_rnd_data(rng: Generator, nqubits: int) -> npt.NDArray[np.complex128
     return data
 
 
+@pytest.mark.skipif(not _gpu_available(), reason="GPU not available")
 class TestStatevec:
     """Self-contained unit tests for the cuQuantum statevector."""
 
@@ -156,6 +170,7 @@ class TestStatevec:
         assert np.allclose(sv.flatten(), sv_ref.flatten())
 
 
+@pytest.mark.skipif(not _gpu_available(), reason="GPU not available")
 class TestStatevecLegacy:
     """Compare cuQuantum backend results against the reference NumPy statevector."""
 
@@ -238,6 +253,7 @@ class TestStatevecLegacy:
             assert sv_ref.isclose(SVLegacy(data=sv_test.flatten()))
 
 
+@pytest.mark.skipif(not _gpu_available(), reason="GPU not available")
 @pytest.mark.parametrize("jumps", range(1, 6))
 def test_pattern_simulator(fx_bg: PCG64, jumps: int) -> None:
     """End-to-end pattern simulation with the cuQuantum backend."""

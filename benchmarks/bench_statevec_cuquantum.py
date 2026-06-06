@@ -11,6 +11,18 @@ from graphix.states import BasicStates
 
 from graphix_statevec_cuquantum import Statevec
 
+
+def _gpu_available() -> bool:
+    try:
+        import cupy as cp  # noqa: PLC0415
+
+        cp.zeros(1)
+    except Exception:  # noqa: BLE001
+        return False
+    else:
+        return True
+
+
 if TYPE_CHECKING:
     from pytest_benchmark import BenchmarkFixture
 
@@ -18,6 +30,7 @@ if TYPE_CHECKING:
 nqubits = (4, 8, 12, 16)
 
 
+@pytest.mark.skipif(not _gpu_available(), reason="GPU not available")
 class BenchCuQuantum:
     """cuQuantum GPU backend benchmarks."""
 
