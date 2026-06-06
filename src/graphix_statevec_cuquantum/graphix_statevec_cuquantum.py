@@ -153,8 +153,8 @@ class Statevec(DenseState):
     # -- add_nodes ------------------------------------------------------- #
 
     @override
-    def add_nodes(self, n: int, data: Data) -> None:
-        sv = Statevec(nqubit=n, data=data)
+    def add_nodes(self, nqubit: int, data: Data) -> None:
+        sv = Statevec(nqubit=nqubit, data=data)
         self.tensor(sv)
 
     # -- entangle -------------------------------------------------------- #
