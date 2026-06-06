@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 # cuQuantum constants
 # ---------------------------------------------------------------------------
 _SV_DTYPE = cudaDataType.CUDA_C_64F  # complex128
-_MAP_DTYPE = cudaDataType.CUDA_R_64U  # uint64
 _LAYOUT = custatevec.MatrixLayout.ROW
 _COMPUTE = custatevec.ComputeType.COMPUTE_DEFAULT
 
@@ -248,7 +247,9 @@ class Statevec(DenseState):
         t = _msb_to_lsb(targets, n)
         h = _handle()
 
-        # Get required workspace size
+        n_targets = len(t)
+        n_controls = 0
+
         ws_size = custatevec.apply_matrix_get_workspace_size(
             h,
             _SV_DTYPE,
@@ -256,11 +257,10 @@ class Statevec(DenseState):
             gate.data.ptr,
             _SV_DTYPE,
             _LAYOUT,
-            t,
-            len(t),
-            0,
-            0,
-            0,
+            False,
+            n_targets,
+            n_controls,
+            _COMPUTE,
         )
         ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
 
@@ -274,10 +274,10 @@ class Statevec(DenseState):
             _LAYOUT,
             False,
             t,
-            len(t),
+            n_targets,
             0,
             0,
-            0,  # no controls
+            n_controls,
             _COMPUTE,
             ws.data.ptr if ws_size > 0 else 0,
             ws_size,
@@ -293,8 +293,8 @@ class Statevec(DenseState):
         h = _handle()
 
         result = cp.zeros(1, dtype=cp.complex128)
+        n_basis_bits = len(t)
 
-        # Workspace
         ws_size = custatevec.compute_expectation_get_workspace_size(
             h,
             _SV_DTYPE,
@@ -302,9 +302,8 @@ class Statevec(DenseState):
             gate.data.ptr,
             _SV_DTYPE,
             _LAYOUT,
-            t,
-            len(t),
-            0,
+            n_basis_bits,
+            _COMPUTE,
         )
         ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
 
@@ -319,7 +318,7 @@ class Statevec(DenseState):
             _SV_DTYPE,
             _LAYOUT,
             t,
-            len(t),
+            n_basis_bits,
             _COMPUTE,
             ws.data.ptr if ws_size > 0 else 0,
             ws_size,
