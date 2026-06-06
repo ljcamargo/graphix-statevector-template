@@ -225,7 +225,7 @@ class Statevec(DenseState):
         total = ns + no
 
         if total > self.max_space:
-            new_max = max(total, self.max_space * 2) if self.max_space > 0 else total
+            new_max = total
             buf = cp.zeros(1 << new_max, dtype=cp.complex128)
             buf[: 1 << ns] = self.psi[: 1 << ns]
             self.psi = buf
