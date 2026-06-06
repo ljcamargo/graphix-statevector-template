@@ -15,7 +15,14 @@ uv lock 2>&1 | tee -a "$LOGFILE"
 uv sync --extra cuquantum --dev 2>&1 | tee -a "$LOGFILE"
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 2: Sanity check - cuQuantum import and basic init ===" | tee -a "$LOGFILE"
+echo "=== Step 2: Verify cuQuantum and cupy installed ===" | tee -a "$LOGFILE"
+uv run python3 -c "
+import cupy; print(f'cupy {cupy.__version__} OK')
+import cuquantum; print(f'cuquantum {cuquantum.__version__} OK')
+" 2>&1 | tee -a "$LOGFILE"
+echo "" | tee -a "$LOGFILE"
+
+echo "=== Step 3: Sanity check - cuQuantum import and basic init ===" | tee -a "$LOGFILE"
 uv run python3 -c "
 from graphix_statevec_cuquantum import Statevec, StatevectorBackend
 from graphix.states import BasicStates
@@ -53,19 +60,19 @@ print('Sanity check PASSED')
 " 2>&1 | tee -a "$LOGFILE"
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 3: Run template (CPU) backend unit tests ===" | tee -a "$LOGFILE"
+echo "=== Step 4: Run template (CPU) backend unit tests ===" | tee -a "$LOGFILE"
 uv run pytest tests/test_statevec.py -k "TestStatevec" -v 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 4: Run cuQuantum (GPU) backend unit tests ===" | tee -a "$LOGFILE"
+echo "=== Step 5: Run cuQuantum (GPU) backend unit tests ===" | tee -a "$LOGFILE"
 uv run pytest tests/test_statevec_cuquantum.py -k "TestStatevec" -v 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 5: Run cuQuantum legacy comparison tests ===" | tee -a "$LOGFILE"
+echo "=== Step 6: Run cuQuantum legacy comparison tests ===" | tee -a "$LOGFILE"
 uv run pytest tests/test_statevec_cuquantum.py -k "TestStatevecLegacy" -v 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 6: Run cuQuantum pattern simulator test ===" | tee -a "$LOGFILE"
+echo "=== Step 7: Run cuQuantum pattern simulator test ===" | tee -a "$LOGFILE"
 uv run pytest tests/test_statevec_cuquantum.py -k "test_pattern_simulator" -v 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
