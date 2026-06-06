@@ -15,7 +15,8 @@ from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, override
 
 import cupy as cp
 import numpy as np
-from cuquantum import custatevec
+from cuquantum import cudaDataType
+from cuquantum.bindings import custatevec
 from graphix.parameter import Expression
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix
 from graphix.states import BasicStates, State
@@ -26,12 +27,12 @@ if TYPE_CHECKING:
     from graphix.sim.data import Data
 
 # ---------------------------------------------------------------------------
-# CZ tensor for entangle
+# cuQuantum constants
 # ---------------------------------------------------------------------------
-_CZ = cp.array(
-    [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]],
-    dtype=cp.complex128,
-)
+_SV_DTYPE = cudaDataType.CUDA_C_64F  # complex128
+_MAP_DTYPE = cudaDataType.CUDA_R_64U  # uint64
+_LAYOUT = custatevec.MatrixLayout.ROW
+_COMPUTE = custatevec.ComputeType.COMPUTE_DEFAULT
 
 # Global cuStateVec handle (created once, reused across Statevec instances)
 _HANDLE: int | None = None
@@ -44,16 +45,8 @@ def _handle() -> int:
     return _HANDLE
 
 
-def _cu_dtype(dt: cp.dtype) -> int:
-    if dt == cp.complex128:
-        return custatevec.cuDataType.CUDA_C_128F
-    if dt == cp.uint64:
-        return custatevec.cuDataType.CUDA_U_64
-    raise TypeError(f"Unsupported dtype: {dt}")
-
-
 def _msb_to_lsb(targets: list[int], nq: int) -> list[int]:
-    """Graphix MSB → cuQuantum LSB."""
+    """Graphix MSB convention -> cuQuantum LSB convention."""
     return [nq - 1 - t for t in targets]
 
 
@@ -73,15 +66,6 @@ class Statevec(DenseState):
         Number of qubits.  Inferred from *data* if ``None``.
     max_space : int, optional
         Allocated qubit capacity.  Defaults to *nqubit*.
-
-    Attributes
-    ----------
-    psi : cupy.ndarray
-        Flat GPU array of shape ``(2**max_space,)``.
-    _nqubit : int
-        Currently active qubits.
-    max_space : int
-        Allocated qubit capacity.
     """
 
     psi: cp.ndarray
@@ -97,7 +81,6 @@ class Statevec(DenseState):
         if nqubit is not None and nqubit < 0:
             raise ValueError("nqubit must be a non-negative integer.")
 
-        # Copy constructor
         if isinstance(data, Statevec):
             if nqubit is not None and nqubit != data._nqubit:
                 raise ValueError(f"Inconsistent nqubit={nqubit} vs. Statevec nqubit={data._nqubit}")
@@ -106,7 +89,6 @@ class Statevec(DenseState):
             self.psi = data.psi.copy()
             return
 
-        # Parse input
         if isinstance(data, State):
             if nqubit is None:
                 nqubit = 1
@@ -180,24 +162,28 @@ class Statevec(DenseState):
 
     @override
     def entangle(self, edge: tuple[int, int]) -> None:
-        self._apply_gate(_CZ, list(edge))
+        cz = cp.array(
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]],
+            dtype=cp.complex128,
+        )
+        self._apply_matrix(cz, list(edge))
 
     # -- evolve ---------------------------------------------------------- #
 
     @override
     def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
-        self._apply_gate(cp.asarray(op, dtype=cp.complex128), list(qargs))
+        self._apply_matrix(cp.asarray(op, dtype=cp.complex128), list(qargs))
 
     @override
     def evolve_single(self, op: Matrix, i: int) -> None:
-        self._apply_gate(cp.asarray(op, dtype=cp.complex128), [i])
+        self._apply_matrix(cp.asarray(op, dtype=cp.complex128), [i])
 
     # -- expectation_single ---------------------------------------------- #
 
     @override
     def expectation_single(self, op: Matrix, loc: int) -> complex:
-        g = cp.asarray(op, dtype=cp.complex128)
-        return complex(self._expectation(g, [loc]))
+        gate = cp.asarray(op, dtype=cp.complex128)
+        return self._expectation(gate, [loc])
 
     # -- remove_qubit ---------------------------------------------------- #
 
@@ -228,25 +214,8 @@ class Statevec(DenseState):
         if i == j or self._nqubit == 0:
             return
         n = self._nqubit
-        bit_i = n - 1 - i
-        bit_j = n - 1 - j
-
-        idxs = cp.arange(1 << n, dtype=cp.uint64)
-        bi = (idxs >> bit_i) & 1
-        bj = (idxs >> bit_j) & 1
-        mask = cp.where(bi != bj, (1 << bit_i) | (1 << bit_j), 0)
-        gather = idxs ^ mask
-
-        h = _handle()
-        active = self.psi[: 1 << n]
-        custatevec.swap_index_bits(
-            h,
-            active.data.ptr,
-            _cu_dtype(active.dtype),
-            gather.data.ptr,
-            _cu_dtype(gather.dtype),
-            1 << n,
-        )
+        t = self.psi[: 1 << n].reshape((2,) * n)
+        self.psi[: 1 << n] = cp.swapaxes(t, i, j).ravel()
 
     # -- tensor ---------------------------------------------------------- #
 
@@ -270,47 +239,92 @@ class Statevec(DenseState):
 
     # -- cuQuantum helpers ----------------------------------------------- #
 
-    def _apply_gate(self, gate: cp.ndarray, targets: list[int]) -> None:
-        if self._nqubit == 0:
-            return
+    def _apply_matrix(self, gate: cp.ndarray, targets: list[int]) -> None:
+        """Apply a matrix via ``custatevec.apply_matrix``."""
         n = self._nqubit
+        if n == 0:
+            return
         active = self.psi[: 1 << n]
         t = _msb_to_lsb(targets, n)
         h = _handle()
-        custatevec.apply_gate(
+
+        # Get required workspace size
+        ws_size = custatevec.apply_matrix_get_workspace_size(
+            h,
+            _SV_DTYPE,
+            n,
+            gate.data.ptr,
+            _SV_DTYPE,
+            _LAYOUT,
+            t,
+            len(t),
+            0,
+            0,
+            0,
+        )
+        ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
+
+        custatevec.apply_matrix(
             h,
             active.data.ptr,
-            _cu_dtype(active.dtype),
+            _SV_DTYPE,
+            n,
             gate.data.ptr,
-            _cu_dtype(gate.dtype),
+            _SV_DTYPE,
+            _LAYOUT,
+            False,
             t,
             len(t),
             0,
             0,
             0,  # no controls
-            0,  # adjoint = False
+            _COMPUTE,
+            ws.data.ptr if ws_size > 0 else 0,
+            ws_size,
         )
 
-    def _expectation(self, gate: cp.ndarray, targets: list[int]) -> float:
-        if self._nqubit == 0:
-            return 1.0
+    def _expectation(self, gate: cp.ndarray, targets: list[int]) -> complex:
+        """Compute [psi|gate|psi] via ``custatevec.compute_expectation``."""
         n = self._nqubit
+        if n == 0:
+            return 1.0 + 0.0j
         active = self.psi[: 1 << n]
         t = _msb_to_lsb(targets, n)
         h = _handle()
-        r = custatevec.compute_expectation(
+
+        result = cp.zeros(1, dtype=cp.complex128)
+
+        # Workspace
+        ws_size = custatevec.compute_expectation_get_workspace_size(
             h,
-            active.data.ptr,
-            _cu_dtype(active.dtype),
+            _SV_DTYPE,
+            n,
             gate.data.ptr,
-            _cu_dtype(gate.dtype),
+            _SV_DTYPE,
+            _LAYOUT,
             t,
             len(t),
             0,
-            0,
-            0,
         )
-        return float(r)
+        ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
+
+        custatevec.compute_expectation(
+            h,
+            active.data.ptr,
+            _SV_DTYPE,
+            n,
+            result.data.ptr,
+            _SV_DTYPE,
+            gate.data.ptr,
+            _SV_DTYPE,
+            _LAYOUT,
+            t,
+            len(t),
+            _COMPUTE,
+            ws.data.ptr if ws_size > 0 else 0,
+            ws_size,
+        )
+        return complex(float(cp.real(result[0])), float(cp.imag(result[0])))
 
     # -- helpers --------------------------------------------------------- #
 
