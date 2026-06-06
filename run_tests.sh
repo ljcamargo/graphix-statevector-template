@@ -15,11 +15,13 @@ uv lock 2>&1 | tee -a "$LOGFILE"
 uv sync --extra cuquantum --dev 2>&1 | tee -a "$LOGFILE"
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 2: Verify cuQuantum and cupy installed ===" | tee -a "$LOGFILE"
+echo "=== Step 2: Verify cuQuantum, cupy installed & GPU info ===" | tee -a "$LOGFILE"
 uv run python3 -c "
 import cupy; print(f'cupy {cupy.__version__} OK')
 import cuquantum; print(f'cuquantum {cuquantum.__version__} OK')
 " 2>&1 | tee -a "$LOGFILE"
+echo "GPU info:" | tee -a "$LOGFILE"
+nvidia-smi 2>&1 | tee -a "$LOGFILE" || echo "nvidia-smi not available" | tee -a "$LOGFILE"
 echo "" | tee -a "$LOGFILE"
 
 echo "=== Step 3: Sanity check - cuQuantum import and basic init ===" | tee -a "$LOGFILE"
@@ -74,6 +76,17 @@ echo "" | tee -a "$LOGFILE"
 
 echo "=== Step 7: Run cuQuantum pattern simulator test ===" | tee -a "$LOGFILE"
 uv run pytest tests/test_statevec_cuquantum.py -k "test_pattern_simulator" -v 2>&1 | tee -a "$LOGFILE" || true
+echo "" | tee -a "$LOGFILE"
+
+echo "=== Step 8: Run benchmarks (CPU vs GPU comparison) ===" | tee -a "$LOGFILE"
+echo "Benchmark: template CPU backend" | tee -a "$LOGFILE"
+uv run pytest benchmarks/bench_statevec.py -k "BenchTemplate" --benchmark-only --benchmark-autosave 2>&1 | tee -a "$LOGFILE" || echo "Template CPU benchmarks skipped (not implemented)" | tee -a "$LOGFILE"
+echo "" | tee -a "$LOGFILE"
+echo "Benchmark: cuQuantum GPU backend" | tee -a "$LOGFILE"
+uv run pytest benchmarks/bench_statevec_cuquantum.py -k "BenchCuQuantum" --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
+echo "" | tee -a "$LOGFILE"
+echo "Benchmark: template CPU backend (for comparison)" | tee -a "$LOGFILE"
+uv run pytest benchmarks/bench_statevec_cuquantum.py -k "BenchTemplateCPU" --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
 echo "==========================================" | tee -a "$LOGFILE"
