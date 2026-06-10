@@ -46,7 +46,7 @@ def _handle() -> int:
 
 def _msb_to_lsb(targets: list[int], nq: int) -> list[int]:
     """Graphix MSB convention -> cuQuantum LSB convention."""
-    return [nq - 1 - t for t in targets]
+    return tuple(nq - 1 - t for t in targets)
 
 
 class Statevec(DenseState):
