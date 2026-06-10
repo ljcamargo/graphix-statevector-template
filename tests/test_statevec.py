@@ -246,9 +246,7 @@ def test_pattern_simulator(fx_bg: PCG64, jumps: int) -> None:
     nqubits = 5
 
     pattern = rand_circuit(nqubits, depth=5, rng=rng).transpile().pattern
-    pattern.remove_input_nodes()
-    pattern.perform_pauli_measurements()
-    pattern.infer_pauli_measurements()
+    pattern.remove_pauli_measurements()
 
     sv_test = pattern.simulate_pattern(backend=StatevectorBackend(), rng=rng)
     sv_ref = pattern.simulate_pattern(backend=SBLegacy(), rng=rng)

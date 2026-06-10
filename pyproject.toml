@@ -39,6 +39,11 @@ graphix = { git = "https://github.com/TeamGraphix/graphix.git", rev = "master" }
 [project.scripts]
 graphix-statevec-template = "graphix_statevec_template:main"
 
+[project.optional-dependencies]
+typing = [
+    "qiskit==2.3.1",
+]
+
 [tool.ruff]
 line-length = 120
 exclude = [
