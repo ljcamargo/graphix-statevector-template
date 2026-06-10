@@ -42,6 +42,15 @@ _CZ = cp.array(
     dtype=cp.complex128,
 )
 
+@property
+def _active_psi(self) -> cp.ndarray:
+    """Return the active portion of the state vector (first 2^n elements)."""
+    return self.psi[: 1 << self._nqubit]
+
+@_active_psi.setter
+def _active_psi(self, value: cp.ndarray) -> None:
+    """Set the active portion of the state vector."""
+    self.psi[: 1 << self._nqubit] = value
 
 def _handle() -> int:
     global _HANDLE  # noqa: PLW0603
@@ -192,19 +201,20 @@ class Statevec(DenseState):
     def remove_qubit(self, qarg: int) -> None:
         """Remove a separable qubit, keeping the branch with non-zero norm."""
         n = self._nqubit
-        t = self.psi[: 1 << n].reshape((2,) * n)
-
+        t = self._active_psi.reshape((2,) * n)
+    
         idx: list[slice | int] = [slice(None)] * n
-    for val in (0, 1):
-        idx[qarg] = val
-        br = t[tuple(idx)].ravel()
-        nrm2 = float(cp.sum(cp.abs(br) ** 2))
-        if not math.isclose(nrm2, 0, abs_tol=1e-15):
-            break
-    else:
-        raise ValueError(f"Both branches for qubit {qarg} have zero norm — qubit may not be separable.")
-
-        self.psi[: 1 << (n - 1)] = br
+        for val in (0, 1):
+            idx[qarg] = val
+            br = t[tuple(idx)].ravel()
+            nrm2 = float(cp.sum(cp.abs(br) ** 2))
+            if not math.isclose(nrm2, 0, abs_tol=1e-15):
+                break
+        else:
+            raise ValueError(f"Both branches for qubit {qarg} have zero norm — qubit may not be separable.")
+    
+        br /= math.sqrt(nrm2)  # normalize!
+        self._active_psi = br
         self._nqubit -= 1
 
     # -- swap ------------------------------------------------------------ #
@@ -214,9 +224,9 @@ class Statevec(DenseState):
         i, j = qubits
         if i == j or self._nqubit == 0:
             return
-        n = self._nqubit
-        t = self.psi[: 1 << n].reshape((2,) * n)
-        self.psi[: 1 << n] = cp.swapaxes(t, i, j).ravel()
+
+        t = self._active_psi.reshape((2,) * self._nqubit)
+        self._active_psi = cp.swapaxes(t, i, j).ravel()
 
     # -- tensor ---------------------------------------------------------- #
 
@@ -245,7 +255,7 @@ class Statevec(DenseState):
         n = self._nqubit
         if n == 0:
             return
-        active = self.psi[: 1 << n]
+        active = self._active_psi
         t = _msb_to_lsb(targets, n)
         h = _handle()
 
@@ -297,7 +307,7 @@ class Statevec(DenseState):
         n = self._nqubit
         if n == 0:
             return 1.0 + 0.0j
-        active = self.psi[: 1 << n]
+        active = self._active_psi
         t = _msb_to_lsb(targets, n)
         h = _handle()
 
