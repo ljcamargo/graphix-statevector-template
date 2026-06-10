@@ -36,6 +36,12 @@ _COMPUTE = custatevec.ComputeType.COMPUTE_DEFAULT
 # Global cuStateVec handle (created once, reused across Statevec instances)
 _HANDLE: int | None = None
 
+# Common quantum gates
+_CZ = cp.array(
+    [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]],
+    dtype=cp.complex128,
+)
+
 
 def _handle() -> int:
     global _HANDLE  # noqa: PLW0603
@@ -44,7 +50,7 @@ def _handle() -> int:
     return _HANDLE
 
 
-def _msb_to_lsb(targets: list[int], nq: int) -> list[int]:
+def _msb_to_lsb(targets: list[int], nq: int) -> tuple:
     """Graphix MSB convention -> cuQuantum LSB convention."""
     return tuple(nq - 1 - t for t in targets)
 
@@ -161,11 +167,7 @@ class Statevec(DenseState):
 
     @override
     def entangle(self, edge: tuple[int, int]) -> None:
-        cz = cp.array(
-            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]],
-            dtype=cp.complex128,
-        )
-        self._apply_matrix(cz, list(edge))
+        self._apply_matrix(_CZ, list(edge))
 
     # -- evolve ---------------------------------------------------------- #
 
@@ -251,36 +253,39 @@ class Statevec(DenseState):
         n_controls = 0
 
         ws_size = custatevec.apply_matrix_get_workspace_size(
-            h,
-            _SV_DTYPE,
-            n,
-            gate.data.ptr,
-            _SV_DTYPE,
-            _LAYOUT,
-            False,
-            n_targets,
-            n_controls,
-            _COMPUTE,
+            handle=h,
+            sv_data_type=_SV_DTYPE,
+            n_index_bits=n,
+            matrix=gate.data.ptr,
+            matrix_data_type=_SV_DTYPE,
+            layout=_LAYOUT,
+            adjoint=False,
+            n_targets=n_targets,
+            n_controls=n_controls,
+            compute_type=_COMPUTE,
         )
-        ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
+
+        has_workspace = ws_size > 0
+        ws = cp.zeros(ws_size, dtype=cp.uint8) if has_workspace else 0
+        ws_ptr = ws.data.ptr if has_workspace else 0
 
         custatevec.apply_matrix(
-            h,
-            active.data.ptr,
-            _SV_DTYPE,
-            n,
-            gate.data.ptr,
-            _SV_DTYPE,
-            _LAYOUT,
-            False,
-            t,
-            n_targets,
-            0,
-            0,
-            n_controls,
-            _COMPUTE,
-            ws.data.ptr if ws_size > 0 else 0,
-            ws_size,
+            handle=h,
+            sv=active.data.ptr,
+            sv_data_type=_SV_DTYPE,
+            n_index_bits=n,
+            matrix=gate.data.ptr,
+            matrix_data_type=_SV_DTYPE,
+            layout=_LAYOUT,
+            adjoint=False,
+            targets=t,
+            n_targets=n_targets,
+            controls=0,
+            control_bit_values=0,
+            n_controls=n_controls,
+            compute_type=_COMPUTE,
+            extra_workspace=ws_ptr,
+            extra_workspace_size_in_bytes=ws_size,
         )
 
     def _expectation(self, gate: cp.ndarray, targets: list[int]) -> complex:
@@ -303,34 +308,38 @@ class Statevec(DenseState):
         n_basis_bits = len(t)
 
         ws_size = custatevec.compute_expectation_get_workspace_size(
-            h,
-            _SV_DTYPE,
-            n,
-            gate.data.ptr,
-            _SV_DTYPE,
-            _LAYOUT,
-            n_basis_bits,
-            _COMPUTE,
+            handle=h,
+            sv_data_type=_SV_DTYPE,
+            n_index_bits=n,
+            matrix=gate.data.ptr,
+            matrix_data_type=_SV_DTYPE,
+            layout=_LAYOUT,
+            n_basis_bits=n_basis_bits,
+            compute_type=_COMPUTE,
         )
-        ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
+
+        has_workspace = ws_size > 0
+        ws = cp.zeros(ws_size, dtype=cp.uint8) if has_workspace else 0
+        ws_ptr = ws.data.ptr if has_workspace else 0
 
         custatevec.compute_expectation(
-            h,
-            active.data.ptr,
-            _SV_DTYPE,
-            n,
-            result_ptr,
-            _SV_DTYPE,
-            gate.data.ptr,
-            _SV_DTYPE,
-            _LAYOUT,
-            t,
-            n_basis_bits,
-            _COMPUTE,
-            ws.data.ptr if ws_size > 0 else 0,
-            ws_size,
+            handle=h,
+            sv=active.data.ptr,
+            sv_data_type=_SV_DTYPE,
+            n_index_bits=n,
+            expectation_value=result_ptr,
+            expectation_data_type=_SV_DTYPE,
+            matrix=gate.data.ptr,
+            matrix_data_type=_SV_DTYPE,
+            layout=_LAYOUT,
+            basis_bits=t,
+            n_basis_bits=n_basis_bits,
+            compute_type=_COMPUTE,
+            extra_workspace=ws_ptr,
+            extra_workspace_size_in_bytes=ws_size,
         )
-        return complex(float(result[0].real), float(result[0].imag))
+
+        return complex(result[0])
 
     # -- helpers --------------------------------------------------------- #
 
