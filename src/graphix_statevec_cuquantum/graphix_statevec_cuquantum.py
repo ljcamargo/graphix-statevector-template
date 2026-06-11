@@ -20,7 +20,7 @@ from cuquantum.bindings import custatevec
 from graphix.parameter import Expression
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix
 from graphix.states import BasicStates, State
-from graphix.sim.statevec import Statevec
+from graphix.sim.statevec import Statevec as BaseStatevec
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -93,7 +93,7 @@ class Statevec(DenseState):
         nqubit: int | None = None,
         max_space: int | None = None,
     ) -> None:
-        base = Statevec(data, nqubit)
+        base = BaseStatevec(data, nqubit)
 
         # Determine the actual max_space value
         actual_max_space: int
