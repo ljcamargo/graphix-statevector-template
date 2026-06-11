@@ -6,8 +6,7 @@ import numpy as np
 import pytest
 from graphix.clifford import Clifford
 from graphix.states import BasicStates
-
-from graphix_statevec_template import Statevec
+from graphix.sim.statevec import Statevec
 
 if TYPE_CHECKING:
     from pytest_benchmark import BenchmarkFixture

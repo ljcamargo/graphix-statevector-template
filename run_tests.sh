@@ -82,6 +82,18 @@ echo "=== Step 8: Run cuQuantum GPU backend benchmarks ===" | tee -a "$LOGFILE"
 uv run pytest benchmarks/bench_statevec_cuquantum.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
+echo "=== Step 9: Run CPU backend benchmarks for comparison ===" | tee -a "$LOGFILE"
+uv run pytest benchmarks/bench_statevec_cpu.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
+echo "" | tee -a "$LOGFILE"
+
+echo "=== Step 10: Run MQT GPU benchmarks ===" | tee -a "$LOGFILE"
+uv run pytest benchmarks/bench_mqtbench_cuquantum.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
+echo "" | tee -a "$LOGFILE"
+
+echo "=== Step 11: Run MQT CPU benchmarks (if implemented) ===" | tee -a "$LOGFILE"
+uv run pytest benchmarks/bench_mqtbench_cpu.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
+echo "" | tee -a "$LOGFILE"
+
 echo "==========================================" | tee -a "$LOGFILE"
 echo " All tests completed." | tee -a "$LOGFILE"
 echo " Log saved to: $LOGFILE" | tee -a "$LOGFILE"

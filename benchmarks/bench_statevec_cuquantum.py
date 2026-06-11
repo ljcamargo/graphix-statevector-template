@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+import cupy as cp
 import pytest
 from graphix.clifford import Clifford
 from graphix.states import BasicStates
@@ -44,7 +45,9 @@ class BenchCuQuantum:
         q = nqubit - 1
 
         def run() -> complex:
-            return sv.expectation_single(op, q)
+            result = sv.expectation_single(op, q)
+            cp.cuda.Device().synchronize()
+            return result
 
         assert benchmark(run) == pytest.approx(1 / np.sqrt(2))
 
@@ -57,6 +60,7 @@ class BenchCuQuantum:
 
         def run() -> None:
             sv.evolve_single(op, q)
+            cp.cuda.Device().synchronize()
 
         benchmark(run)
 
@@ -66,6 +70,7 @@ class BenchCuQuantum:
         def run() -> Statevec:
             sv = Statevec(nqubit=nqubit, data=BasicStates.ZERO)
             sv.add_nodes(nqubit=1, data=BasicStates.PLUS)
+            cp.cuda.Device().synchronize()
             return sv
 
         sv = benchmark(run)
@@ -78,6 +83,7 @@ class BenchCuQuantum:
         def run() -> Statevec:
             sv = Statevec(nqubit=nqubit, data=BasicStates.PLUS)
             sv.remove_qubit(nqubit - 1)
+            cp.cuda.Device().synchronize()
             return sv
 
         sv = benchmark(run)
@@ -91,5 +97,6 @@ class BenchCuQuantum:
 
         def run() -> None:
             sv.entangle((0, nqubit - 1))
+            cp.cuda.Device().synchronize()
 
         benchmark(run)
