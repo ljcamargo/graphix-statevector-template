@@ -15,7 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 cuquantum = [
     "cupy-cuda12x>=13.0",
-    "cuquantum-python-cu24>=24.03",
+    "cuquantum-python-cu12>=24.3",
 ]
 typing = [
     "qiskit==2.3.1",
