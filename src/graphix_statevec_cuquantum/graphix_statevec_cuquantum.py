@@ -43,16 +43,6 @@ _CZ = cp.array(
     dtype=cp.complex128,
 )
 
-@property
-def _active_psi(self) -> cp.ndarray:
-    """Return the active portion of the state vector (first 2^n elements)."""
-    return self.psi[: 1 << self._nqubit]
-
-@_active_psi.setter
-def _active_psi(self, value: cp.ndarray) -> None:
-    """Set the active portion of the state vector."""
-    self.psi[: 1 << self._nqubit] = value
-
 def _handle() -> int:
     global _HANDLE  # noqa: PLW0603
     if _HANDLE is None:
@@ -115,6 +105,16 @@ class Statevec(DenseState):
             self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)
 
     # -- properties ------------------------------------------------------ #
+
+    @property
+    def _active_psi(self) -> cp.ndarray:
+        """Return the active portion of the state vector (first 2^n elements)."""
+        return self.psi[: 1 << self._nqubit]
+
+    @_active_psi.setter
+    def _active_psi(self, value: cp.ndarray) -> None:
+        """Set the active portion of the state vector."""
+        self.psi[: 1 << self._nqubit] = value
 
     @property
     @override
