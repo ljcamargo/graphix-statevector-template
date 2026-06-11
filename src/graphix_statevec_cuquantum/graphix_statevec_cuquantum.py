@@ -111,7 +111,8 @@ class Statevec(DenseState):
 
         # Copying the validated state to GPU
         size = 1 << self._nqubit
-        self.psi[:size] = cp.asarray(base.psi[:size], dtype=cp.complex128)
+        if self._nqubit > 0:
+            self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)
 
     # -- properties ------------------------------------------------------ #
 
