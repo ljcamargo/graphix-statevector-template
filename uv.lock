@@ -459,6 +459,7 @@ dependencies = [
 cuquantum = [
     { name = "cupy-cuda12x" },
     { name = "cuquantum-python-cu12" },
+]
 typing = [
     { name = "qiskit" },
 ]
