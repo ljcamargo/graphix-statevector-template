@@ -190,18 +190,19 @@ class Statevec(DenseState):
         t = self._active_psi.reshape((2,) * n)
 
         idx: list[slice | int] = [slice(None)] * n
-        for val in (0, 1):
-            idx[qarg] = val
+        idx[qarg] = 0
+        br = t[tuple(idx)].ravel()
+        nrm2 = float(cp.sum(cp.abs(br) ** 2))
+        if math.isclose(nrm2, 0, abs_tol=1e-15):
+            idx[qarg] = 1
             br = t[tuple(idx)].ravel()
             nrm2 = float(cp.sum(cp.abs(br) ** 2))
-            if not math.isclose(nrm2, 0, abs_tol=1e-15):
-                break
-        else:
-            raise ValueError(f"Both branches for qubit {qarg} have zero norm — qubit may not be separable.")
 
         br /= math.sqrt(nrm2)
-        self._nqubit -= 1  # Decrement FIRST
-        self._active_psi = br  # Now the slice size matches br
+
+        # new the property setter
+        self._active_psi = br
+        self._nqubit -= 1
 
     # -- swap ------------------------------------------------------------ #
 
