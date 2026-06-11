@@ -15,7 +15,10 @@ dependencies = [
 [project.optional-dependencies]
 cuquantum = [
     "cupy-cuda12x>=13.0",
-    "cuquantum-python-cu12>=24.03",
+    "cuquantum-python-cu24>=24.03",
+]
+typing = [
+    "qiskit==2.3.1",
 ]
 
 [build-system]
@@ -38,11 +41,6 @@ graphix = { git = "https://github.com/TeamGraphix/graphix.git", rev = "master" }
 
 [project.scripts]
 graphix-statevec-template = "graphix_statevec_template:main"
-
-[project.optional-dependencies]
-typing = [
-    "qiskit==2.3.1",
-]
 
 [tool.ruff]
 line-length = 120
@@ -141,7 +139,7 @@ include = ["**/*.py"]
 exclude = [
   "__init__.py",
   "*.ipynb",
-  "**/__pycache__", 
+  "**/__pycache__",
   "**/.*",
   "**/node_modules"]
 reportUnknownArgumentType = "information"
