@@ -103,6 +103,9 @@ class Statevec(DenseState):
         size = 1 << self._nqubit
         if self._nqubit > 0:
             self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)
+        elif self._nqubit == 0:
+            # Special case: 0 qubits should have state [1+0j]
+            self.psi[0] = cp.asarray(1.0 + 0.0j, dtype=cp.complex128)
 
     # -- properties ------------------------------------------------------ #
 
@@ -179,7 +182,9 @@ class Statevec(DenseState):
     @override
     def expectation_single(self, op: Matrix, loc: int) -> complex:
         gate = cp.asarray(op, dtype=cp.complex128)
-        return self._expectation(gate, [loc])
+        result = self._expectation(gate, [loc])
+        # Expectations should be real (imaginary part is numerical noise)
+        return complex(result.real, 0.0)  # Or simply: return result.real
 
     # -- remove_qubit ---------------------------------------------------- #
 
