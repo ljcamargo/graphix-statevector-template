@@ -11,7 +11,7 @@ import functools
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, override
+from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, override, Self
 
 import cupy as cp
 import numpy as np
@@ -92,65 +92,25 @@ class Statevec(DenseState):
         nqubit: int | None = None,
         max_space: int | None = None,
     ) -> None:
-        if nqubit is not None and nqubit < 0:
-            raise ValueError("nqubit must be a non-negative integer.")
+        base = graphix.sim.statevector.Statevec(data, nqubit)
 
-        if isinstance(data, Statevec):
-            if nqubit is not None and nqubit != data._nqubit:
-                raise ValueError(f"Inconsistent nqubit={nqubit} vs. Statevec nqubit={data._nqubit}")
-            self._nqubit = data._nqubit
-            self.max_space = data.max_space
-            self.psi = data.psi.copy()
-            return
-
-        if isinstance(data, State):
-            if nqubit is None:
-                nqubit = 1
-            items: list = [data] * nqubit
-        elif isinstance(data, Iterable):
-            items = list(data)
-        else:
-            raise TypeError(f"Incorrect type for data: {type(data)}")
-
-        if len(items) == 0:
-            if nqubit is not None and nqubit != 0:
-                raise ValueError("nqubit is not null but input state is empty.")
-            nqubit = 0
-            cpu = np.array([1.0 + 0.0j], dtype=np.complex128)
-        elif isinstance(items[0], State):
-            if nqubit is None:
-                nqubit = len(items)
-            elif nqubit != len(items):
-                raise ValueError("Mismatch between nqubit and length of input state.")
-            vecs = [s.to_statevector() for s in items]
-            tmp = functools.reduce(lambda a, b: np.kron(a, b).astype(np.complex128), vecs)
-            cpu = tmp.ravel()
-        elif isinstance(items[0], (Expression, SupportsComplex, SupportsFloat)):
-            if nqubit is None:
-                nvals = len(items)
-                if nvals & (nvals - 1):
-                    raise ValueError("Length is not a power of two")
-                nqubit = nvals.bit_length() - 1
-            elif nqubit != (len(items).bit_length() - 1):
-                raise ValueError("Mismatch between nqubit and length of input state")
-            cpu = np.array(items, dtype=np.complex128)
-            if cpu.dtype != "O" and not np.allclose(np.sqrt(np.sum(np.abs(cpu) ** 2)), 1):
-                raise ValueError("Input state is not normalized")
-        else:
-            raise TypeError(f"First element of data has type {type(items[0])} whereas a State or number is expected")
-
+        # Determine the actual max_space value
+        actual_max_space: int
         if max_space is None:
-            max_space = nqubit
-        elif max_space < nqubit:
-            raise ValueError("max_space must be >= nqubit")
+            actual_max_space = base.nqubit
+        else:
+            if max_space < base.nqubit:
+                raise ValueError("max_space must be >= nqubit")
+            actual_max_space = max_space
 
-        self._nqubit = nqubit
-        self.max_space = max_space
-        self.psi = cp.zeros(1 << max_space, dtype=cp.complex128)
-        if nqubit > 0:
-            self.psi[: 1 << nqubit] = cp.asarray(cpu, dtype=cp.complex128)
-        elif nqubit == 0:
-            self.psi[0] = cp.asarray(cpu, dtype=cp.complex128)
+        # Initializing GPU state with padding
+        self._nqubit = base.nqubit
+        self.max_space = actual_max_space
+        self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)
+
+        # Copying the validated state to GPU
+        size = 1 << self._nqubit
+        self.psi[:size] = cp.asarray(base.psi[:size], dtype=cp.complex128)
 
     # -- properties ------------------------------------------------------ #
 
@@ -169,8 +129,32 @@ class Statevec(DenseState):
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:
-        sv = Statevec(nqubit=nqubit, data=data)
-        self.tensor(sv)
+        """Add nqubit nodes in the given state."""
+        if nqubit == 1 and data is BasicStates.PLUS:
+            # Common case: adding a single |+> node during MBQC pattern execution
+            old_size = 1 << self._nqubit
+            new_size = old_size * 2
+
+            # Ensure we have enough space
+            if new_size > (1 << self.max_space):
+                new_max = max(self.max_space + 1, self._nqubit + 1)
+                new_psi = cp.zeros(1 << new_max, dtype=cp.complex128)
+                new_psi[:old_size] = self.psi[:old_size]
+                self.psi = new_psi
+                self.max_space = new_max
+
+            # Optimized tensor product with |+> : 1/√2 (|0> + |1>)
+            sqrt2_inv = 1.0 / cp.sqrt(2.0)
+
+            # Scale existing values and duplicate to both halves
+            self.psi[:old_size] *= sqrt2_inv
+            self.psi[old_size:new_size] = self.psi[:old_size]
+
+            self._nqubit += 1
+        else:
+            # General case: use the standard tensor product
+            sv = Statevec(nqubit=nqubit, data=data)
+            self.tensor(sv)
 
     # -- entangle -------------------------------------------------------- #
 
@@ -202,7 +186,7 @@ class Statevec(DenseState):
         """Remove a separable qubit, keeping the branch with non-zero norm."""
         n = self._nqubit
         t = self._active_psi.reshape((2,) * n)
-    
+
         idx: list[slice | int] = [slice(None)] * n
         for val in (0, 1):
             idx[qarg] = val
@@ -212,7 +196,7 @@ class Statevec(DenseState):
                 break
         else:
             raise ValueError(f"Both branches for qubit {qarg} have zero norm — qubit may not be separable.")
-    
+
         br /= math.sqrt(nrm2)  # normalize!
         self._active_psi = br
         self._nqubit -= 1
@@ -383,3 +367,22 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
     """MBQC backend with cuQuantum-accelerated statevector simulation."""
 
     state: Statevec = dataclasses.field(init=False, default_factory=lambda: Statevec(nqubit=0))
+
+    @classmethod
+    def with_capacity(
+        cls, max_qubits: int, state: Statevec | None = None, **kwargs
+    ) -> Self:
+        """Initialize the backend with preallocated statevector capacity."""
+        if state is None:
+            state_init = Statevec(nqubit=0, max_space=max_qubits)
+        else:
+            # Convert to CPU numpy array first to avoid type confusion
+            # Get the active portion of the state as a CPU numpy array
+            cpu_state = state.psi[: 1 << state._nqubit].get()  # cupy -> numpy
+            # Create new GPU Statevec from the CPU data
+            state_init = Statevec(data=cpu_state, nqubit=state._nqubit, max_space=max_qubits)
+
+        # Create backend and set state using object.__setattr__ since frozen
+        backend = cls(**kwargs)
+        object.__setattr__(backend, 'state', state_init)
+        return backend
