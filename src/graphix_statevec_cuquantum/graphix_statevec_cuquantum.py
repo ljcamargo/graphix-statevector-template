@@ -200,9 +200,8 @@ class Statevec(DenseState):
 
         br /= math.sqrt(nrm2)
 
-        # new the property setter
-        self._active_psi = br
         self._nqubit -= 1
+        self._active_psi = br
 
     # -- swap ------------------------------------------------------------ #
 
