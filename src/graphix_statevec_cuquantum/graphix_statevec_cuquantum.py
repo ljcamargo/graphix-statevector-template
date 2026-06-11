@@ -104,8 +104,8 @@ class Statevec(DenseState):
         if self._nqubit > 0:
             self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)
         elif self._nqubit == 0:
-            # Special case: 0 qubits should have state [1+0j]
-            self.psi[0] = cp.asarray(1.0 + 0.0j, dtype=cp.complex128)
+            # Use the actual base state (which may be a random unit complex number)
+            self.psi[0] = cp.asarray(base.psi.item(), dtype=cp.complex128)
 
     # -- properties ------------------------------------------------------ #
 
@@ -151,9 +151,12 @@ class Statevec(DenseState):
             # Optimized tensor product with |+> : 1/√2 (|0> + |1>)
             sqrt2_inv = 1.0 / cp.sqrt(2.0)
 
-            # Scale existing values and duplicate to both halves
-            self.psi[:old_size] *= sqrt2_inv
-            self.psi[old_size:new_size] = self.psi[:old_size]
+            # Scale existing state
+            scaled = self.psi[:old_size] * sqrt2_inv
+
+            # Put in BOTH halves
+            self.psi[:old_size] = scaled
+            self.psi[old_size:new_size] = scaled
 
             self._nqubit += 1
         else:
@@ -183,8 +186,8 @@ class Statevec(DenseState):
     def expectation_single(self, op: Matrix, loc: int) -> complex:
         gate = cp.asarray(op, dtype=cp.complex128)
         result = self._expectation(gate, [loc])
-        # Expectations should be real (imaginary part is numerical noise)
-        return complex(result.real, 0.0)  # Or simply: return result.real
+        # Return full complex value, not just real part
+        return result
 
     # -- remove_qubit ---------------------------------------------------- #
 
