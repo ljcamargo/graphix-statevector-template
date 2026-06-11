@@ -39,8 +39,12 @@ dev = [
 graphix-mqtbench = { git = "https://github.com/matulni/graphix-mqtbench.git", rev = "main" }
 graphix = { git = "https://github.com/TeamGraphix/graphix.git", rev = "master" }
 
+[tool.uv.build-backend]
+module-name = "graphix_statevec_cuquantum"
+source-dir = "src"
+
 [project.scripts]
-graphix-statevec-template = "graphix_statevec_template:main"
+graphix-statevec-template = "graphix_statevec_cuquantum:main"
 
 [tool.ruff]
 line-length = 120
