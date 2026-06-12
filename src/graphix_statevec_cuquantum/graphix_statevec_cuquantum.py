@@ -147,17 +147,10 @@ class Statevec(DenseState):
                 self.psi = new_psi
                 self.max_space = new_max
 
-            # Store original state BEFORE any modifications
-            original = self.psi[:old_size].copy()
-
-            # Scale and duplicate
-            sqrt2_inv = 1.0 / cp.sqrt(2.0)
-            scaled = original * sqrt2_inv
-
-            # Assign to both halves
-            self.psi[old_size:new_size] = scaled  # Second half first
-            self.psi[:old_size] = scaled          # Then first half
-
+            # Use cp.kron for correct tensor product with |+>
+            plus_state = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)
+            new_state = cp.kron(self.psi[:old_size], plus_state)
+            self.psi[:new_size] = new_state
             self._nqubit += 1
         else:
             # General case: use the standard tensor product
