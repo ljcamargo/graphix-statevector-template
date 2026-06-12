@@ -14,13 +14,14 @@ if TYPE_CHECKING:
 class BenchTest:
     """CPU MQT benchmarks for comparison with GPU."""
 
-    # CPU can only handle up to ~12 qubits before becoming too slow
-    QUBIT_COUNTS = (4, 6, 8, 10, 12)
+    # CPU is very slow - use small qubit counts
+    QUBIT_COUNTS = (2, 3, 4, 5, 6)
 
     @pytest.mark.benchmark(group="mqtbench_cpu_full_adder")
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_full_adder_cpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark FULL_ADDER pattern on CPU."""
+        print(f"\n[CPU] Running FULL_ADDER with {nqubits} qubits...")
         pattern = Benchmark(BenchmarkName.FULL_ADDER, nqubits).to_pattern().minimize_space()
         backend = CPUBackend()
         rng = np.random.default_rng(42)
@@ -29,11 +30,13 @@ class BenchTest:
             pattern.simulate_pattern(backend=backend, rng=rng)
 
         benchmark(run)
+        print(f"[CPU] Completed FULL_ADDER with {nqubits} qubits")
 
     @pytest.mark.benchmark(group="mqtbench_cpu_qft")
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_qft_cpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark QFT pattern on CPU."""
+        print(f"\n[CPU] Running QFT with {nqubits} qubits...")
         pattern = Benchmark(BenchmarkName.QFT, nqubits).to_pattern().minimize_space()
         backend = CPUBackend()
         rng = np.random.default_rng(42)
@@ -42,11 +45,13 @@ class BenchTest:
             pattern.simulate_pattern(backend=backend, rng=rng)
 
         benchmark(run)
+        print(f"[CPU] Completed QFT with {nqubits} qubits")
 
     @pytest.mark.benchmark(group="mqtbench_cpu_random_circuit")
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_random_circuit_cpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark RANDOMCIRCUIT pattern on CPU."""
+        print(f"\n[CPU] Running RANDOM_CIRCUIT with {nqubits} qubits...")
         pattern = Benchmark(BenchmarkName.RANDOMCIRCUIT, nqubits).to_pattern().minimize_space()
         backend = CPUBackend()
         rng = np.random.default_rng(42)
@@ -55,3 +60,4 @@ class BenchTest:
             pattern.simulate_pattern(backend=backend, rng=rng)
 
         benchmark(run)
+        print(f"[CPU] Completed RANDOM_CIRCUIT with {nqubits} qubits")

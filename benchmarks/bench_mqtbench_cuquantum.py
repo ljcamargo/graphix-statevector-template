@@ -23,6 +23,7 @@ class BenchTest:
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_full_adder_gpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark FULL_ADDER pattern on GPU."""
+        print(f"\n[GPU] Running FULL_ADDER with {nqubits} qubits...")
         pattern = Benchmark(BenchmarkName.FULL_ADDER, nqubits).to_pattern().minimize_space()
         backend = StatevectorBackend()
         rng = np.random.default_rng(42)
@@ -32,11 +33,13 @@ class BenchTest:
             cp.cuda.Device().synchronize()
 
         benchmark(run)
+        print(f"[GPU] Completed FULL_ADDER with {nqubits} qubits")
 
     @pytest.mark.benchmark(group="mqtbench_gpu_qft")
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_qft_gpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark QFT pattern on GPU."""
+        print(f"\n[GPU] Running QFT with {nqubits} qubits...")
         pattern = Benchmark(BenchmarkName.QFT, nqubits).to_pattern().minimize_space()
         backend = StatevectorBackend()
         rng = np.random.default_rng(42)
@@ -46,11 +49,13 @@ class BenchTest:
             cp.cuda.Device().synchronize()
 
         benchmark(run)
+        print(f"[GPU] Completed QFT with {nqubits} qubits")
 
     @pytest.mark.benchmark(group="mqtbench_gpu_random_circuit")
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_random_circuit_gpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark RANDOMCIRCUIT pattern on GPU."""
+        print(f"\n[GPU] Running RANDOM_CIRCUIT with {nqubits} qubits...")
         pattern = Benchmark(BenchmarkName.RANDOMCIRCUIT, nqubits).to_pattern().minimize_space()
         backend = StatevectorBackend()
         rng = np.random.default_rng(42)
@@ -60,3 +65,4 @@ class BenchTest:
             cp.cuda.Device().synchronize()
 
         benchmark(run)
+        print(f"[GPU] Completed RANDOM_CIRCUIT with {nqubits} qubits")

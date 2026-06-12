@@ -83,11 +83,11 @@ uv run pytest benchmarks/bench_statevec_cpu.py --benchmark-only 2>&1 | tee -a "$
 echo "" | tee -a "$LOGFILE"
 
 echo "=== Step 9: Run MQT CPU benchmarks (if implemented) ===" | tee -a "$LOGFILE"
-uv run pytest benchmarks/bench_mqtbench_cpu.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
+uv run pytest benchmarks/bench_mqtbench_cpu.py --benchmark-only -v -s 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
 echo "=== Step 10: Run MQT CuQuantum GPU benchmarks ===" | tee -a "$LOGFILE"
-uv run pytest benchmarks/bench_mqtbench_cuquantum.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
+uv run pytest benchmarks/bench_mqtbench_cuquantum.py --benchmark-only -v -s 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
 echo "==========================================" | tee -a "$LOGFILE"
