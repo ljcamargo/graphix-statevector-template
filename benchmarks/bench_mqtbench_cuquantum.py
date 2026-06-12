@@ -16,10 +16,9 @@ if TYPE_CHECKING:
 class BenchTest:
     """GPU-accelerated MQT benchmarks with proper synchronization."""
 
-    # GPU memory is limited (15GB on T4) - use very small qubit counts
     QUBIT_COUNTS = (2, 3, 4)
 
-    @pytest.mark.benchmark(group="mqtbench_gpu_full_adder")
+    @pytest.mark.benchmark(group="mqtbench_gpu_full_adder", max_time=120, min_rounds=1, warmup=False)
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_full_adder_gpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark FULL_ADDER pattern on GPU."""
@@ -35,7 +34,7 @@ class BenchTest:
 
         benchmark(run)
 
-    @pytest.mark.benchmark(group="mqtbench_gpu_qft")
+    @pytest.mark.benchmark(group="mqtbench_gpu_qft", max_time=120, min_rounds=1, warmup=False)
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_qft_gpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark QFT pattern on GPU."""
@@ -51,7 +50,7 @@ class BenchTest:
 
         benchmark(run)
 
-    @pytest.mark.benchmark(group="mqtbench_gpu_random_circuit")
+    @pytest.mark.benchmark(group="mqtbench_gpu_random_circuit", max_time=120, min_rounds=1, warmup=False)
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_random_circuit_gpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark RANDOMCIRCUIT pattern on GPU."""

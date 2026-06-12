@@ -16,7 +16,7 @@ class BenchTest:
 
     QUBIT_COUNTS = (2, 3)
 
-    @pytest.mark.benchmark(group="mqtbench_cpu_full_adder")
+    @pytest.mark.benchmark(group="mqtbench_cpu_full_adder", max_time=60, min_rounds=1, warmup=False)
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_full_adder_cpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark FULL_ADDER pattern on CPU."""
@@ -30,7 +30,7 @@ class BenchTest:
 
         benchmark(run)
 
-    @pytest.mark.benchmark(group="mqtbench_cpu_qft")
+    @pytest.mark.benchmark(group="mqtbench_cpu_qft", max_time=60, min_rounds=1, warmup=False)
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_qft_cpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark QFT pattern on CPU."""
@@ -44,7 +44,7 @@ class BenchTest:
 
         benchmark(run)
 
-    @pytest.mark.benchmark(group="mqtbench_cpu_random_circuit")
+    @pytest.mark.benchmark(group="mqtbench_cpu_random_circuit", max_time=60, min_rounds=1, warmup=False)
     @pytest.mark.parametrize("nqubits", QUBIT_COUNTS)
     def bench_random_circuit_cpu(self, benchmark: BenchmarkFixture, nqubits: int) -> None:
         """Benchmark RANDOMCIRCUIT pattern on CPU."""
