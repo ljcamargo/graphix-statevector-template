@@ -151,8 +151,9 @@ class Statevec(DenseState):
             # Optimized tensor product with |+> : 1/√2 (|0> + |1>)
             sqrt2_inv = 1.0 / cp.sqrt(2.0)
 
-            # Scale existing state
-            scaled = self.psi[:old_size] * sqrt2_inv
+            # Copy the original state before modifying
+            original = self.psi[:old_size].copy()
+            scaled = original * sqrt2_inv
 
             # Put in BOTH halves
             self.psi[:old_size] = scaled
