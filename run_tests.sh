@@ -62,36 +62,32 @@ print('Sanity check PASSED')
 " 2>&1 | tee -a "$LOGFILE"
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 4: Run template (CPU) backend unit tests ===" | tee -a "$LOGFILE"
-uv run pytest tests/test_statevec.py -k "TestStatevec" -v 2>&1 | tee -a "$LOGFILE" || true
+echo "=== Step 4: Run CPU comparison tests ===" | tee -a "$LOGFILE"
+uv run pytest tests/test_statevec_cuquantum.py -k "TestStatevecCPU" -v 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 5: Run cuQuantum (GPU) backend unit tests ===" | tee -a "$LOGFILE"
-uv run pytest tests/test_statevec_cuquantum.py -k "TestStatevec" -v 2>&1 | tee -a "$LOGFILE" || true
+echo "=== Step 5: Run cuQuantum GPU backend unit tests ===" | tee -a "$LOGFILE"
+uv run pytest tests/test_statevec_cuquantum.py -k "TestStatevecCuQuantum" -v 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 6: Run cuQuantum legacy comparison tests ===" | tee -a "$LOGFILE"
-uv run pytest tests/test_statevec_cuquantum.py -k "TestStatevecLegacy" -v 2>&1 | tee -a "$LOGFILE" || true
-echo "" | tee -a "$LOGFILE"
-
-echo "=== Step 7: Run cuQuantum pattern simulator test ===" | tee -a "$LOGFILE"
+echo "=== Step 6: Run cuQuantum GPU pattern simulator test ===" | tee -a "$LOGFILE"
 uv run pytest tests/test_statevec_cuquantum.py -k "test_pattern_simulator" -v 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 8: Run cuQuantum GPU backend benchmarks ===" | tee -a "$LOGFILE"
+echo "=== Step 7: Run cuQuantum GPU backend benchmarks ===" | tee -a "$LOGFILE"
 uv run pytest benchmarks/bench_statevec_cuquantum.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 9: Run CPU backend benchmarks for comparison ===" | tee -a "$LOGFILE"
+echo "=== Step 8: Run CPU backend benchmarks for comparison ===" | tee -a "$LOGFILE"
 uv run pytest benchmarks/bench_statevec_cpu.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 10: Run MQT GPU benchmarks ===" | tee -a "$LOGFILE"
-uv run pytest benchmarks/bench_mqtbench_cuquantum.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
+echo "=== Step 9: Run MQT CPU benchmarks (if implemented) ===" | tee -a "$LOGFILE"
+uv run pytest benchmarks/bench_mqtbench_cpu.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
-echo "=== Step 11: Run MQT CPU benchmarks (if implemented) ===" | tee -a "$LOGFILE"
-uv run pytest benchmarks/bench_mqtbench_cpu.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
+echo "=== Step 10: Run MQT CuQuantum GPU benchmarks ===" | tee -a "$LOGFILE"
+uv run pytest benchmarks/bench_mqtbench_cuquantum.py --benchmark-only 2>&1 | tee -a "$LOGFILE" || true
 echo "" | tee -a "$LOGFILE"
 
 echo "==========================================" | tee -a "$LOGFILE"

@@ -136,7 +136,6 @@ class Statevec(DenseState):
     def add_nodes(self, nqubit: int, data: Data) -> None:
         """Add nqubit nodes in the given state."""
         if nqubit == 1 and data is BasicStates.PLUS:
-            # Common case: adding a single |+> node during MBQC pattern execution
             old_size = 1 << self._nqubit
             new_size = old_size * 2
 
@@ -148,16 +147,16 @@ class Statevec(DenseState):
                 self.psi = new_psi
                 self.max_space = new_max
 
-            # Optimized tensor product with |+> : 1/√2 (|0> + |1>)
-            sqrt2_inv = 1.0 / cp.sqrt(2.0)
-
-            # Copy the original state before modifying
+            # Store original state BEFORE any modifications
             original = self.psi[:old_size].copy()
+
+            # Scale and duplicate
+            sqrt2_inv = 1.0 / cp.sqrt(2.0)
             scaled = original * sqrt2_inv
 
-            # Put in BOTH halves
-            self.psi[:old_size] = scaled
-            self.psi[old_size:new_size] = scaled
+            # Assign to both halves
+            self.psi[old_size:new_size] = scaled  # Second half first
+            self.psi[:old_size] = scaled          # Then first half
 
             self._nqubit += 1
         else:
