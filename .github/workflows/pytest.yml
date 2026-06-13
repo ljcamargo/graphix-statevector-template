@@ -4,9 +4,13 @@ name: pytest
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
+      - 'cu-quantum-**'
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+      - 'cu-quantum-**'
 
 jobs:
   build:
