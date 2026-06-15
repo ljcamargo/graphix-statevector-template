@@ -385,7 +385,4 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
             # Create new GPU Statevec from the CPU data
             state_init = Statevec(data=cpu_state, nqubit=state._nqubit, max_space=max_qubits)
 
-        # Create backend and set state using object.__setattr__ since frozen
-        backend = cls(**kwargs)
-        object.__setattr__(backend, 'state', state_init)
-        return backend
+        return cls(state_init, **kwargs)
