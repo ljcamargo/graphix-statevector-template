@@ -45,17 +45,6 @@ _CZ = cp.array(
 _PLUS_STATE = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)
 
 
-def _handle() -> int:
-    """Return the global cuStateVec handle, creating it on first access.
-
-    Returns
-    -------
-    int
-        Opaque handle to the cuStateVec library context.
-    """
-    return _HANDLE
-
-
 def _msb_to_lsb(targets: list[int], nq: int) -> Tuple[int, ...]:  # noqa: UP006
     """Convert qubit indices from Graphix MSB convention to cuQuantum LSB convention.
 
@@ -381,7 +370,7 @@ class Statevec(DenseState):
             return
         active = self._active_psi
         t = _msb_to_lsb(targets, n)
-        h = _handle()
+        h = _HANDLE
 
         n_targets = len(t)
         n_controls = 0
@@ -442,7 +431,7 @@ class Statevec(DenseState):
             return 1.0 + 0.0j
         active = self._active_psi
         t = _msb_to_lsb(targets, n)
-        h = _handle()
+        h = _HANDLE
 
         # Host-side buffer for the result (cpu numpy array)
         result = np.zeros(1, dtype=np.complex128)
