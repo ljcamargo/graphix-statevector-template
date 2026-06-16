@@ -42,6 +42,7 @@ _CZ = cp.array(
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]],
     dtype=cp.complex128,
 )
+_PLUS_STATE = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)
 
 def _handle() -> int:
     global _HANDLE  # noqa: PLW0603
@@ -148,8 +149,7 @@ class Statevec(DenseState):
                 self.max_space = new_max
 
             # Use cp.kron for correct tensor product with |+>
-            plus_state = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)
-            new_state = cp.kron(self.psi[:old_size], plus_state)
+            new_state = cp.kron(self.psi[:old_size], _PLUS_STATE)
             self.psi[:new_size] = new_state
             self._nqubit += 1
         else:
@@ -262,9 +262,10 @@ class Statevec(DenseState):
             compute_type=_COMPUTE,
         )
 
-        has_workspace = ws_size > 0
-        ws = cp.zeros(ws_size, dtype=cp.uint8) if has_workspace else 0
-        ws_ptr = ws.data.ptr if has_workspace else 0
+        if ws_size == 0:
+            raise ValueError("Workspace size is zero - invalid state for matrix application")
+        ws = cp.zeros(ws_size, dtype=cp.uint8)
+        ws_ptr = ws.data.ptr
 
         custatevec.apply_matrix(
             handle=h,
@@ -315,9 +316,10 @@ class Statevec(DenseState):
             compute_type=_COMPUTE,
         )
 
-        has_workspace = ws_size > 0
-        ws = cp.zeros(ws_size, dtype=cp.uint8) if has_workspace else 0
-        ws_ptr = ws.data.ptr if has_workspace else 0
+        if ws_size == 0:
+            raise ValueError("Workspace size is zero - invalid state for expectation computation")
+        ws = cp.zeros(ws_size, dtype=cp.uint8)
+        ws_ptr = ws.data.ptr
 
         custatevec.compute_expectation(
             handle=h,
