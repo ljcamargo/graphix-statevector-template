@@ -318,7 +318,6 @@ class Statevec(DenseState):
         else:
             raise ValueError(f"Both branches for qubit {qarg} have zero norm — qubit may not be separable.")
 
-
         br /= math.sqrt(nrm2)
 
         self._nqubit -= 1
