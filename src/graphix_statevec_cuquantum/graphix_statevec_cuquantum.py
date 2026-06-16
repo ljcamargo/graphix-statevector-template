@@ -9,7 +9,7 @@ import copy
 import dataclasses
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Self, Tuple, cast, override
+from typing import TYPE_CHECKING, Any, Self, Tuple, cast, override  # noqa: UP035
 
 import cupy as _cp
 import numpy as np
@@ -49,7 +49,7 @@ def _handle() -> int:
     return _HANDLE
 
 
-def _msb_to_lsb(targets: list[int], nq: int) -> Tuple[int, ...]:
+def _msb_to_lsb(targets: list[int], nq: int) -> Tuple[int, ...]:  # noqa: UP006
     """Graphix MSB convention -> cuQuantum LSB convention."""
     return tuple(nq - 1 - t for t in targets)
 
@@ -434,5 +434,5 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
             state_init = Statevec(data=gpu_state, nqubit=state._nqubit, max_space=max_qubits)
 
         backend = cls(**kwargs)
-        object.__setattr__(backend, 'state', state_init)
+        object.__setattr__(backend, 'state', state_init)  # noqa: PLC2801
         return backend
