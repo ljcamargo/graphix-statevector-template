@@ -138,7 +138,7 @@ class Statevec(DenseState):
             actual_max_space = base.nqubit
         else:
             if max_space < base.nqubit:
-                raise ValueError("max_space must be >= nqubit")
+                raise ValueError(f"`max_space` is smaller than `nqubit`: {max_space} < {base.nqubit}.")
             actual_max_space = max_space
 
         # Initializing GPU state with padding
