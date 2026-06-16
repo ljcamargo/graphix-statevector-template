@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # cuQuantum constants
 # ---------------------------------------------------------------------------
-_SV_DTYPE = cudaDataType.CUDA_C_64F  # type: ignore[attr-defined]
+_SV_DTYPE = cudaDataType.CUDA_C_64F
 _LAYOUT = custatevec.MatrixLayout.ROW
 _COMPUTE = custatevec.ComputeType.COMPUTE_DEFAULT
 
@@ -36,11 +36,11 @@ _COMPUTE = custatevec.ComputeType.COMPUTE_DEFAULT
 _HANDLE: int | None = None
 
 # Common quantum gates
-_CZ = cp.array(  # type: ignore[attr-defined]
+_CZ = cp.array(
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]],
-    dtype=cp.complex128,  # type: ignore[attr-defined]
+    dtype=cp.complex128,
 )
-_PLUS_STATE = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)  # type: ignore[attr-defined,no-untyped-call]
+_PLUS_STATE = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)
 
 
 def _handle() -> int:
@@ -108,7 +108,7 @@ class Statevec(DenseState):
 
             self._nqubit = nqubit
             self.max_space = actual_max_space
-            self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
+            self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)
             self.psi[: 1 << nqubit] = data.astype(cp.complex128)
             return
 
@@ -125,14 +125,14 @@ class Statevec(DenseState):
         # Initializing GPU state with padding
         self._nqubit = base.nqubit
         self.max_space = actual_max_space
-        self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
+        self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)
 
         # Copying the validated state to GPU
         size = 1 << self._nqubit
         if self._nqubit > 0:
-            self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
+            self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)
         elif self._nqubit == 0:
-            self.psi[0] = cp.asarray(base.psi.item(), dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
+            self.psi[0] = cp.asarray(base.psi.item(), dtype=cp.complex128)
 
     # -- properties ------------------------------------------------------ #
 
@@ -171,7 +171,7 @@ class Statevec(DenseState):
 
         # Grow capacity: at least double or add 1 qubit, whichever is larger
         new_max = max(self.max_space + 1, required_qubits)
-        new_psi = cp.zeros(1 << new_max, dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
+        new_psi = cp.zeros(1 << new_max, dtype=cp.complex128)
         new_psi[: 1 << self._nqubit] = self.psi[: 1 << self._nqubit]
         self.psi = new_psi
         self.max_space = new_max
@@ -181,7 +181,7 @@ class Statevec(DenseState):
 
     @override
     def flatten(self) -> Matrix:
-        return cast(Matrix, cp.asnumpy(self.psi[: 1 << self._nqubit]))  # type: ignore[no-untyped-call]
+        return cast(Matrix, cp.asnumpy(self.psi[: 1 << self._nqubit]))
 
     # -- add_nodes ------------------------------------------------------- #
 
@@ -225,7 +225,7 @@ class Statevec(DenseState):
 
     @override
     def expectation_single(self, op: Matrix, loc: int) -> complex:
-        gate = cp.asarray(op, dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
+        gate = cp.asarray(op, dtype=cp.complex128)
         result = self._expectation(gate, [loc])
         # Return full complex value, not just real part
         return result
@@ -269,7 +269,7 @@ class Statevec(DenseState):
             return
 
         t = self._active_psi.reshape((2,) * self._nqubit)
-        self._active_psi = cp.swapaxes(t, i, j).ravel()  # type: ignore[attr-defined,no-untyped-call]
+        self._active_psi = cp.swapaxes(t, i, j).ravel()
 
     # -- tensor ---------------------------------------------------------- #
 
@@ -314,7 +314,7 @@ class Statevec(DenseState):
         )
 
         ws_ptr: int = (
-            cp.zeros(ws_size, dtype=cp.uint8).data.ptr  # type: ignore[attr-defined,no-untyped-call]
+            cp.zeros(ws_size, dtype=cp.uint8).data.ptr
             if ws_size > 0
             else 0
         )
@@ -369,7 +369,7 @@ class Statevec(DenseState):
         )
 
         ws_ptr: int = (
-            cp.zeros(ws_size, dtype=cp.uint8).data.ptr  # type: ignore[attr-defined,no-untyped-call]
+            cp.zeros(ws_size, dtype=cp.uint8).data.ptr
             if ws_size > 0
             else 0
         )
