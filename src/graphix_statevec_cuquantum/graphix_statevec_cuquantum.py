@@ -311,11 +311,7 @@ class Statevec(DenseState):
             compute_type=_COMPUTE,
         )
 
-        ws_ptr: int = (
-            cp.zeros(ws_size, dtype=cp.uint8).data.ptr
-            if ws_size > 0
-            else 0
-        )
+        ws_ptr: int = cp.zeros(ws_size, dtype=cp.uint8).data.ptr if ws_size > 0 else 0
 
         custatevec.apply_matrix(
             handle=h,
@@ -366,11 +362,7 @@ class Statevec(DenseState):
             compute_type=_COMPUTE,
         )
 
-        ws_ptr: int = (
-            cp.zeros(ws_size, dtype=cp.uint8).data.ptr
-            if ws_size > 0
-            else 0
-        )
+        ws_ptr: int = cp.zeros(ws_size, dtype=cp.uint8).data.ptr if ws_size > 0 else 0
 
         custatevec.compute_expectation(
             handle=h,
@@ -434,5 +426,5 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
             state_init = Statevec(data=gpu_state, nqubit=state._nqubit, max_space=max_qubits)
 
         backend = cls(**kwargs)
-        object.__setattr__(backend, 'state', state_init)  # noqa: PLC2801
+        object.__setattr__(backend, "state", state_init)  # noqa: PLC2801
         return backend
