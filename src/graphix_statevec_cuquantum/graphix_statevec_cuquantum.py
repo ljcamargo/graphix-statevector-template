@@ -189,10 +189,7 @@ class Statevec(DenseState):
         required_qubits : int
             Minimum number of qubits needed.
         """
-        required_size = 1 << required_qubits
-        current_capacity = 1 << self.max_space
-
-        if required_size <= current_capacity:
+        if required_qubits <= self.max_space:
             return
 
         # Grow capacity: at least double or add 1 qubit, whichever is larger
