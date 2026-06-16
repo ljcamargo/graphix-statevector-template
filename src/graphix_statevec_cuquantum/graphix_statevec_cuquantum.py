@@ -104,32 +104,7 @@ class Statevec(DenseState):
     ) -> None:
         # Handle GPU array input
         if isinstance(data, cp.ndarray):
-            if nqubit is None:
-                # Infer nqubit from array length
-                length = len(data)
-                if length & (length - 1):
-                    raise ValueError("Array length must be a power of 2")
-                nqubit = length.bit_length() - 1
-
-            # Validate normalization
-            norm = cp.sqrt(cp.sum(cp.abs(data) ** 2))
-            if not cp.isclose(norm, 1.0):
-                raise ValueError("Input state is not normalized")
-
-            # Determine max_space
-            actual_max_space: int
-            if max_space is None:
-                actual_max_space = nqubit
-            else:
-                if max_space < nqubit:
-                    raise ValueError("max_space must be >= nqubit")
-                actual_max_space = max_space
-
-            self._nqubit = nqubit
-            self.max_space = actual_max_space
-            self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)
-            self.psi[: 1 << nqubit] = data.astype(cp.complex128)
-            return
+            data = data.asnumpy()
 
         base = BaseStatevec(data, nqubit)
 
