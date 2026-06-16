@@ -80,10 +80,39 @@ class Statevec(DenseState):
 
     def __init__(
         self,
-        data: Data = BasicStates.PLUS,
+        data: Data | cp.ndarray = BasicStates.PLUS,
         nqubit: int | None = None,
         max_space: int | None = None,
     ) -> None:
+        # Handle GPU array input
+        if isinstance(data, cp.ndarray):
+            if nqubit is None:
+                # Infer nqubit from array length
+                length = len(data)
+                if length & (length - 1):
+                    raise ValueError("Array length must be a power of 2")
+                nqubit = length.bit_length() - 1
+
+            # Validate normalization
+            norm = cp.sqrt(cp.sum(cp.abs(data) ** 2))
+            if not cp.isclose(norm, 1.0):
+                raise ValueError("Input state is not normalized")
+
+            # Determine max_space
+            actual_max_space: int
+            if max_space is None:
+                actual_max_space = nqubit
+            else:
+                if max_space < nqubit:
+                    raise ValueError("max_space must be >= nqubit")
+                actual_max_space = max_space
+
+            self._nqubit = nqubit
+            self.max_space = actual_max_space
+            self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)
+            self.psi[: 1 << nqubit] = data.astype(cp.complex128)
+            return
+
         base = BaseStatevec(data, nqubit)
 
         # Determine the actual max_space value
@@ -105,7 +134,6 @@ class Statevec(DenseState):
         if self._nqubit > 0:
             self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)
         elif self._nqubit == 0:
-            # Use the actual base state (which may be a random unit complex number)
             self.psi[0] = cp.asarray(base.psi.item(), dtype=cp.complex128)
 
     # -- properties ------------------------------------------------------ #
@@ -398,11 +426,8 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
         if state is None:
             state_init = Statevec(nqubit=0, max_space=max_qubits)
         else:
-            # Convert to CPU numpy array first to avoid type confusion
-            # Get the active portion of the state as a CPU numpy array
-            cpu_state = state.psi[: 1 << state._nqubit].get()  # cupy -> numpy
-            # Create new GPU Statevec from the CPU data
-            state_init = Statevec(data=cpu_state, nqubit=state._nqubit, max_space=max_qubits)
+            gpu_state = state.psi[: 1 << state._nqubit].copy()
+            state_init = Statevec(data=gpu_state, nqubit=state._nqubit, max_space=max_qubits)
 
         # Create backend and set state using object.__setattr__ since frozen
         backend = cls(**kwargs)
