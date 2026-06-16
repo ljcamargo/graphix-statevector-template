@@ -12,7 +12,7 @@ echo "" | tee -a "$LOGFILE"
 
 echo "=== Step 1: Update lockfile and install dependencies ===" | tee -a "$LOGFILE"
 uv lock 2>&1 | tee -a "$LOGFILE"
-uv sync --dev 2>&1 | tee -a "$LOGFILE"
+uv sync --extra cuquantum --dev 2>&1 | tee -a "$LOGFILE"
 echo "" | tee -a "$LOGFILE"
 
 echo "=== Step 2: Run mypy type checker ===" | tee -a "$LOGFILE"
