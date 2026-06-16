@@ -315,10 +315,8 @@ class Statevec(DenseState):
             compute_type=_COMPUTE,
         )
 
-        if ws_size == 0:
-            raise ValueError("Workspace size is zero - invalid state for matrix application")
-        ws = cp.zeros(ws_size, dtype=cp.uint8)
-        ws_ptr = ws.data.ptr
+        ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
+        ws_ptr = ws.data.ptr if ws_size > 0 else 0
 
         custatevec.apply_matrix(
             handle=h,
@@ -369,10 +367,8 @@ class Statevec(DenseState):
             compute_type=_COMPUTE,
         )
 
-        if ws_size == 0:
-            raise ValueError("Workspace size is zero - invalid state for expectation computation")
-        ws = cp.zeros(ws_size, dtype=cp.uint8)
-        ws_ptr = ws.data.ptr
+        ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
+        ws_ptr = ws.data.ptr if ws_size > 0 else 0
 
         custatevec.compute_expectation(
             handle=h,
