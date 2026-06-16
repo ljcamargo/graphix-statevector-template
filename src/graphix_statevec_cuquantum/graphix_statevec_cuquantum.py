@@ -11,13 +11,16 @@ import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Self, Tuple, cast, override
 
-import cupy as cp  # type: ignore[import-not-found]
+import cupy as _cp
 import numpy as np
-from cuquantum import cudaDataType  # type: ignore[import-not-found]
-from cuquantum.bindings import custatevec  # type: ignore[import-not-found]
+from cuquantum import cudaDataType  # type: ignore[attr-defined]
+from cuquantum.bindings import custatevec
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix
 from graphix.sim.statevec import Statevec as BaseStatevec
 from graphix.states import BasicStates
+
+# cupy has no type stubs — treat as Any to avoid per-line attr-defined errors
+cp: Any = _cp
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
