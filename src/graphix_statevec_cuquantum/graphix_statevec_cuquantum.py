@@ -7,20 +7,18 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-import functools
 import math
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, SupportsComplex, SupportsFloat, override, Self
+from typing import TYPE_CHECKING, Any, Self, Tuple, cast, override
 
-import cupy as cp
+import cupy as cp  # type: ignore[import-not-found]
 import numpy as np
-from cuquantum import cudaDataType
-from cuquantum.bindings import custatevec
-from graphix.parameter import Expression
+from cuquantum import cudaDataType  # type: ignore[import-not-found]
+from cuquantum.bindings import custatevec  # type: ignore[import-not-found]
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix
-from graphix.states import BasicStates, State
 from graphix.sim.statevec import Statevec as BaseStatevec
+from graphix.states import BasicStates, State
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -30,7 +28,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # cuQuantum constants
 # ---------------------------------------------------------------------------
-_SV_DTYPE = cudaDataType.CUDA_C_64F  # complex128
+_SV_DTYPE = cudaDataType.CUDA_C_64F  # type: ignore[attr-defined]
 _LAYOUT = custatevec.MatrixLayout.ROW
 _COMPUTE = custatevec.ComputeType.COMPUTE_DEFAULT
 
@@ -38,20 +36,21 @@ _COMPUTE = custatevec.ComputeType.COMPUTE_DEFAULT
 _HANDLE: int | None = None
 
 # Common quantum gates
-_CZ = cp.array(
+_CZ = cp.array(  # type: ignore[attr-defined]
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, -1]],
-    dtype=cp.complex128,
+    dtype=cp.complex128,  # type: ignore[attr-defined]
 )
-_PLUS_STATE = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)
+_PLUS_STATE = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)  # type: ignore[attr-defined,no-untyped-call]
+
 
 def _handle() -> int:
-    global _HANDLE  # noqa: PLW0603
+    global _HANDLE
     if _HANDLE is None:
         _HANDLE = custatevec.create()
     return _HANDLE
 
 
-def _msb_to_lsb(targets: list[int], nq: int) -> tuple:
+def _msb_to_lsb(targets: list[int], nq: int) -> Tuple[int, ...]:
     """Graphix MSB convention -> cuQuantum LSB convention."""
     return tuple(nq - 1 - t for t in targets)
 
@@ -109,14 +108,13 @@ class Statevec(DenseState):
 
             self._nqubit = nqubit
             self.max_space = actual_max_space
-            self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)
+            self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
             self.psi[: 1 << nqubit] = data.astype(cp.complex128)
             return
 
         base = BaseStatevec(data, nqubit)
 
         # Determine the actual max_space value
-        actual_max_space: int
         if max_space is None:
             actual_max_space = base.nqubit
         else:
@@ -127,19 +125,19 @@ class Statevec(DenseState):
         # Initializing GPU state with padding
         self._nqubit = base.nqubit
         self.max_space = actual_max_space
-        self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)
+        self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
 
         # Copying the validated state to GPU
         size = 1 << self._nqubit
         if self._nqubit > 0:
-            self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)
+            self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
         elif self._nqubit == 0:
-            self.psi[0] = cp.asarray(base.psi.item(), dtype=cp.complex128)
+            self.psi[0] = cp.asarray(base.psi.item(), dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
 
     # -- properties ------------------------------------------------------ #
 
     @property
-    def _active_psi(self) -> cp.ndarray:
+    def _active_psi(self) -> Any:
         """Return the active portion of the state vector (first 2^n elements)."""
         return self.psi[: 1 << self._nqubit]
 
@@ -173,7 +171,7 @@ class Statevec(DenseState):
 
         # Grow capacity: at least double or add 1 qubit, whichever is larger
         new_max = max(self.max_space + 1, required_qubits)
-        new_psi = cp.zeros(1 << new_max, dtype=cp.complex128)
+        new_psi = cp.zeros(1 << new_max, dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
         new_psi[: 1 << self._nqubit] = self.psi[: 1 << self._nqubit]
         self.psi = new_psi
         self.max_space = new_max
@@ -183,7 +181,7 @@ class Statevec(DenseState):
 
     @override
     def flatten(self) -> Matrix:
-        return cp.asnumpy(self.psi[: 1 << self._nqubit])
+        return cast(Matrix, cp.asnumpy(self.psi[: 1 << self._nqubit]))  # type: ignore[no-untyped-call]
 
     # -- add_nodes ------------------------------------------------------- #
 
@@ -227,7 +225,7 @@ class Statevec(DenseState):
 
     @override
     def expectation_single(self, op: Matrix, loc: int) -> complex:
-        gate = cp.asarray(op, dtype=cp.complex128)
+        gate = cp.asarray(op, dtype=cp.complex128)  # type: ignore[attr-defined,no-untyped-call]
         result = self._expectation(gate, [loc])
         # Return full complex value, not just real part
         return result
@@ -271,7 +269,7 @@ class Statevec(DenseState):
             return
 
         t = self._active_psi.reshape((2,) * self._nqubit)
-        self._active_psi = cp.swapaxes(t, i, j).ravel()
+        self._active_psi = cp.swapaxes(t, i, j).ravel()  # type: ignore[attr-defined,no-untyped-call]
 
     # -- tensor ---------------------------------------------------------- #
 
@@ -302,7 +300,7 @@ class Statevec(DenseState):
         n_targets = len(t)
         n_controls = 0
 
-        ws_size = custatevec.apply_matrix_get_workspace_size(
+        ws_size: int = custatevec.apply_matrix_get_workspace_size(
             handle=h,
             sv_data_type=_SV_DTYPE,
             n_index_bits=n,
@@ -315,8 +313,11 @@ class Statevec(DenseState):
             compute_type=_COMPUTE,
         )
 
-        ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
-        ws_ptr = ws.data.ptr if ws_size > 0 else 0
+        ws_ptr: int = (
+            cp.zeros(ws_size, dtype=cp.uint8).data.ptr  # type: ignore[attr-defined,no-untyped-call]
+            if ws_size > 0
+            else 0
+        )
 
         custatevec.apply_matrix(
             handle=h,
@@ -356,7 +357,7 @@ class Statevec(DenseState):
 
         n_basis_bits = len(t)
 
-        ws_size = custatevec.compute_expectation_get_workspace_size(
+        ws_size: int = custatevec.compute_expectation_get_workspace_size(
             handle=h,
             sv_data_type=_SV_DTYPE,
             n_index_bits=n,
@@ -367,8 +368,11 @@ class Statevec(DenseState):
             compute_type=_COMPUTE,
         )
 
-        ws = cp.zeros(ws_size, dtype=cp.uint8) if ws_size > 0 else 0
-        ws_ptr = ws.data.ptr if ws_size > 0 else 0
+        ws_ptr: int = (
+            cp.zeros(ws_size, dtype=cp.uint8).data.ptr  # type: ignore[attr-defined,no-untyped-call]
+            if ws_size > 0
+            else 0
+        )
 
         custatevec.compute_expectation(
             handle=h,
@@ -423,9 +427,7 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
     state: Statevec = dataclasses.field(init=False, default_factory=lambda: Statevec(nqubit=0))
 
     @classmethod
-    def with_capacity(
-        cls, max_qubits: int, state: Statevec | None = None, **kwargs
-    ) -> Self:
+    def with_capacity(cls, max_qubits: int, state: Statevec | None = None, **kwargs: Any) -> Self:
         """Initialize the backend with preallocated statevector capacity."""
         if state is None:
             state_init = Statevec(nqubit=0, max_space=max_qubits)
@@ -433,4 +435,6 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
             gpu_state = state.psi[: 1 << state._nqubit].copy()
             state_init = Statevec(data=gpu_state, nqubit=state._nqubit, max_space=max_qubits)
 
-        return cls(state_init, **kwargs)
+        backend = cls(**kwargs)
+        object.__setattr__(backend, 'state', state_init)
+        return backend
