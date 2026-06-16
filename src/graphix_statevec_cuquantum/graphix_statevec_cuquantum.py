@@ -437,7 +437,4 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
             gpu_state = state.psi[: 1 << state._nqubit].copy()
             state_init = Statevec(data=gpu_state, nqubit=state._nqubit, max_space=max_qubits)
 
-        # Create backend and set state using object.__setattr__ since frozen
-        backend = cls(**kwargs)
-        object.__setattr__(backend, 'state', state_init)
-        return backend
+        return cls(state_init, **kwargs)
