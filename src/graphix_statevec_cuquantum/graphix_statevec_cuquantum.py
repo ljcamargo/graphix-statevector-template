@@ -46,11 +46,31 @@ _PLUS_STATE = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)
 
 
 def _handle() -> int:
+    """Return the global cuStateVec handle, creating it on first access.
+
+    Returns
+    -------
+    int
+        Opaque handle to the cuStateVec library context.
+    """
     return _HANDLE
 
 
 def _msb_to_lsb(targets: list[int], nq: int) -> Tuple[int, ...]:  # noqa: UP006
-    """Graphix MSB convention -> cuQuantum LSB convention."""
+    """Convert qubit indices from Graphix MSB convention to cuQuantum LSB convention.
+
+    Parameters
+    ----------
+    targets : list of int
+        Target qubit indices in MSB order.
+    nq : int
+        Total number of qubits.
+
+    Returns
+    -------
+    tuple of int
+        Indices in LSB order.
+    """
     return tuple(nq - 1 - t for t in targets)
 
 
@@ -148,6 +168,13 @@ class Statevec(DenseState):
     @property
     @override
     def nqubit(self) -> int:
+        """Return the number of qubits currently in the state.
+
+        Returns
+        -------
+        int
+            Number of qubits.
+        """
         return self._nqubit
 
     # -- capacity management --------------------------------------------- #
@@ -180,13 +207,33 @@ class Statevec(DenseState):
 
     @override
     def flatten(self) -> Matrix:
+        """Return the flattened state vector as a CPU numpy array.
+
+        Copies the active portion of the GPU state back to the host.
+
+        Returns
+        -------
+        Matrix
+            Numpy array of shape ``(2**nqubit,)`` with dtype ``complex128``.
+        """
         return cast("Matrix", cp.asnumpy(self.psi[: 1 << self._nqubit]))
 
     # -- add_nodes ------------------------------------------------------- #
 
     @override
     def add_nodes(self, nqubit: int, data: Data) -> None:
-        """Add nqubit nodes in the given state."""
+        r"""Add qubits and initialise them in a given state.
+
+        A fast path is used when adding a single qubit in the
+        :math:`|+\rangle` state.
+
+        Parameters
+        ----------
+        nqubit : int
+            Number of qubits to add.
+        data : Data
+            State in which to initialise the new qubits.
+        """
         if nqubit == 1 and data is BasicStates.PLUS:
             old_size = 1 << self._nqubit
             new_size = old_size * 2
@@ -208,31 +255,83 @@ class Statevec(DenseState):
 
     @override
     def entangle(self, edge: tuple[int, int]) -> None:
+        """Apply a CZ gate between two qubits.
+
+        Parameters
+        ----------
+        edge : tuple of int
+            (control, target) qubit indices.
+        """
         self._apply_matrix(_CZ, list(edge))
 
     # -- evolve ---------------------------------------------------------- #
 
     @override
     def evolve(self, op: Matrix, qargs: Sequence[int]) -> None:
+        r"""Apply a multi-qubit gate operation.
+
+        Parameters
+        ----------
+        op : Matrix
+            2\ :sup:`n` x 2\ :sup:`n` operator matrix.
+        qargs : Sequence of int
+            Target qubit indices.
+        """
         self._apply_matrix(cp.asarray(op, dtype=cp.complex128), list(qargs))
 
     @override
     def evolve_single(self, op: Matrix, i: int) -> None:
+        """Apply a single-qubit gate operation.
+
+        Parameters
+        ----------
+        op : Matrix
+            2 x 2 operator matrix.
+        i : int
+            Target qubit index.
+        """
         self._apply_matrix(cp.asarray(op, dtype=cp.complex128), [i])
 
     # -- expectation_single ---------------------------------------------- #
 
     @override
     def expectation_single(self, op: Matrix, loc: int) -> complex:
+        """Compute the expectation value of a single-qubit operator.
+
+        Parameters
+        ----------
+        op : Matrix
+            2 x 2 operator matrix.
+        loc : int
+            Target qubit index.
+
+        Returns
+        -------
+        complex
+            Expectation value ``<psi|op|psi>``.
+        """
         gate = cp.asarray(op, dtype=cp.complex128)
-        # Return full complex value, not just real part
         return self._expectation(gate, [loc])
 
     # -- remove_qubit ---------------------------------------------------- #
 
     @override
     def remove_qubit(self, qarg: int) -> None:
-        """Remove a separable qubit, keeping the branch with non-zero norm."""
+        """Remove a separable qubit from the state.
+
+        The qubit is traced out by keeping only the branch with non-zero
+        norm and renormalising.
+
+        Parameters
+        ----------
+        qarg : int
+            Index of the qubit to remove.
+
+        Raises
+        ------
+        ValueError
+            If both branches have zero norm (qubit is not separable).
+        """
         n = self._nqubit
         t = self._active_psi.reshape((2,) * n)
 
@@ -262,6 +361,13 @@ class Statevec(DenseState):
 
     @override
     def swap(self, qubits: tuple[int, int]) -> None:
+        """Swap two qubits in the state.
+
+        Parameters
+        ----------
+        qubits : tuple of int
+            (index1, index2) qubit indices to swap.
+        """
         i, j = qubits
         if i == j or self._nqubit == 0:
             return
@@ -272,7 +378,15 @@ class Statevec(DenseState):
     # -- tensor ---------------------------------------------------------- #
 
     def tensor(self, other: Statevec) -> None:
-        """In-place tensor product ``self ⊗ other``."""
+        """In-place tensor product with another state.
+
+        The resulting state has ``nqubit_self + nqubit_other`` qubits.
+
+        Parameters
+        ----------
+        other : Statevec
+            State to tensor with ``self``.
+        """
         n_self = self._nqubit
         n_other = other._nqubit
         n_total = n_self + n_other
@@ -287,7 +401,15 @@ class Statevec(DenseState):
     # -- cuQuantum helpers ----------------------------------------------- #
 
     def _apply_matrix(self, gate: cp.ndarray, targets: list[int]) -> None:
-        """Apply a matrix via ``custatevec.apply_matrix``."""
+        """Apply a matrix gate using the cuStateVec library.
+
+        Parameters
+        ----------
+        gate : cp.ndarray
+            Gate matrix on GPU.
+        targets : list of int
+            Target qubit indices.
+        """
         n = self._nqubit
         if n == 0:
             return
@@ -333,10 +455,21 @@ class Statevec(DenseState):
         )
 
     def _expectation(self, gate: cp.ndarray, targets: list[int]) -> complex:
-        """Compute [psi|gate|psi] via ``custatevec.compute_expectation``.
+        r"""Compute the expectation value :math:`\langle\psi|\texttt{gate}|\psi\rangle`.
 
-        The expectation value is written to a host-side buffer and
-        returned as a complex number.
+        Uses ``custatevec.compute_expectation`` with a host-side result buffer.
+
+        Parameters
+        ----------
+        gate : cp.ndarray
+            Operator matrix on GPU.
+        targets : list of int
+            Target qubit indices.
+
+        Returns
+        -------
+        complex
+            Expectation value.
         """
         n = self._nqubit
         if n == 0:
@@ -386,27 +519,76 @@ class Statevec(DenseState):
     # -- helpers --------------------------------------------------------- #
 
     def normalize(self) -> None:
-        """Normalise the state in-place."""
+        """Normalise the state vector in-place.
+
+        Divides the active portion of the state by its L2-norm so that
+        the state is renormalised to unit length.
+        """
         a = self.psi[: 1 << self._nqubit]
         a /= math.sqrt(float(cp.sum(cp.abs(a) ** 2)))
 
     def dims(self) -> tuple[int, ...]:
-        """Return the tensor shape ``(2,) * nqubit``."""
+        """Return the tensor shape of the state.
+
+        Returns
+        -------
+        tuple of int
+            Shape ``(2, 2, ..., 2)`` with ``nqubit`` elements.
+        """
         return (2,) * self._nqubit
 
     def isclose(self, other: Statevec, *, rtol: float = 1e-09, atol: float = 0.0) -> bool:
-        """Check equality up to global phase via fidelity."""
+        r"""Check approximate equality up to global phase.
+
+        Equality is determined by checking whether the fidelity
+        :math:`|\langle\psi_1|\psi_2\rangle|^2` is close to 1 within the
+        given tolerances.
+
+        Parameters
+        ----------
+        other : Statevec
+            State to compare with.
+        rtol : float
+            Relative tolerance (passed to :func:`math.isclose`).
+        atol : float
+            Absolute tolerance (passed to :func:`math.isclose`).
+
+        Returns
+        -------
+        bool
+            ``True`` if the states are equivalent up to global phase.
+        """
         return math.isclose(self.fidelity(other), 1, rel_tol=rtol, abs_tol=atol)
 
     def fidelity(self, other: Statevec) -> float:
-        r"""Fidelity :math:`|\langle\psi_1|\psi_2\rangle|^2`."""
+        r"""Compute the fidelity with another state.
+
+        .. math::
+            F = |\langle\psi_1|\psi_2\rangle|^2
+
+        Parameters
+        ----------
+        other : Statevec
+            State to compare with.
+
+        Returns
+        -------
+        float
+            Fidelity value in ``[0, 1]``.
+        """
         a = self.psi[: 1 << self._nqubit]
         b = other.psi[: 1 << other._nqubit]
         ip = float(cp.dot(a.conj(), b))
         return ip.real**2 + ip.imag**2
 
     def copy(self) -> Statevec:
-        """Return a deep copy."""
+        """Return a deep copy of the state.
+
+        Returns
+        -------
+        Statevec
+            Independent copy with the same state and capacity.
+        """
         return copy.deepcopy(self)
 
 
@@ -418,7 +600,26 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
 
     @classmethod
     def with_capacity(cls, max_qubits: int, state: Statevec | None = None, **kwargs: Any) -> Self:
-        """Initialize the backend with preallocated statevector capacity."""
+        """Create a backend with preallocated statevector capacity.
+
+        Pre-allocating capacity avoids repeated GPU reallocations as qubits
+        are added during pattern simulation.
+
+        Parameters
+        ----------
+        max_qubits : int
+            Maximum number of qubits to allocate capacity for.
+        state : Statevec, optional
+            Initial state to use.  If ``None``, starts with a zero-qubit state.
+        **kwargs : Any
+            Additional arguments passed to the backend constructor
+            (e.g. ``branch_selector``, ``symbolic``).
+
+        Returns
+        -------
+        Self
+            A new backend instance with the specified capacity.
+        """
         if state is None:
             state_init = Statevec(nqubit=0, max_space=max_qubits)
         else:
