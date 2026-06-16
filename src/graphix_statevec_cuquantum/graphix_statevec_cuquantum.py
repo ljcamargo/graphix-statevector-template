@@ -104,32 +104,7 @@ class Statevec(DenseState):
     ) -> None:
         # Handle GPU array input
         if isinstance(data, cp.ndarray):
-            if nqubit is None:
-                # Infer nqubit from array length
-                length = len(data)
-                if length & (length - 1):
-                    raise ValueError("Array length must be a power of 2")
-                nqubit = length.bit_length() - 1
-
-            # Validate normalization
-            norm = cp.sqrt(cp.sum(cp.abs(data) ** 2))
-            if not cp.isclose(norm, 1.0):
-                raise ValueError("Input state is not normalized")
-
-            # Determine max_space
-            actual_max_space: int
-            if max_space is None:
-                actual_max_space = nqubit
-            else:
-                if max_space < nqubit:
-                    raise ValueError("max_space must be >= nqubit")
-                actual_max_space = max_space
-
-            self._nqubit = nqubit
-            self.max_space = actual_max_space
-            self.psi = cp.zeros(1 << actual_max_space, dtype=cp.complex128)
-            self.psi[: 1 << nqubit] = data.astype(cp.complex128)
-            return
+            data = data.asnumpy()
 
         base = BaseStatevec(data, nqubit)
 
@@ -138,7 +113,7 @@ class Statevec(DenseState):
             actual_max_space = base.nqubit
         else:
             if max_space < base.nqubit:
-                raise ValueError("max_space must be >= nqubit")
+                raise ValueError(f"`max_space` is smaller than `nqubit`: {max_space} < {base.nqubit}.")
             actual_max_space = max_space
 
         # Initializing GPU state with padding
@@ -149,7 +124,7 @@ class Statevec(DenseState):
         # Copying the validated state to GPU
         size = 1 << self._nqubit
         if self._nqubit > 0:
-            self.psi[:size] = cp.asarray(base.psi.flatten()[:size], dtype=cp.complex128)
+            self.psi[:size] = cp.asarray(base.flatten(), dtype=cp.complex128)
         elif self._nqubit == 0:
             self.psi[0] = cp.asarray(base.psi.item(), dtype=cp.complex128)
 
@@ -189,10 +164,7 @@ class Statevec(DenseState):
         required_qubits : int
             Minimum number of qubits needed.
         """
-        required_size = 1 << required_qubits
-        current_capacity = 1 << self.max_space
-
-        if required_size <= current_capacity:
+        if required_qubits <= self.max_space:
             return
 
         # Grow capacity: at least double or add 1 qubit, whichever is larger
@@ -235,15 +207,14 @@ class Statevec(DenseState):
             State in which to initialise the new qubits.
         """
         if nqubit == 1 and data is BasicStates.PLUS:
-            old_size = 1 << self._nqubit
-            new_size = old_size * 2
             new_nqubit = self._nqubit + 1
+            new_size = 1 << new_nqubit
 
             # Ensure we have enough capacity
             self._ensure_capacity(new_nqubit)
 
             # Use cp.kron for correct tensor product with |+>
-            new_state = cp.kron(self.psi[:old_size], _PLUS_STATE)
+            new_state = cp.kron(self._active_psi, _PLUS_STATE)
             self.psi[:new_size] = new_state
             self._nqubit = new_nqubit
         else:
@@ -336,8 +307,6 @@ class Statevec(DenseState):
         t = self._active_psi.reshape((2,) * n)
 
         idx: list[slice | int] = [slice(None)] * n
-        br: cp.ndarray | None = None
-        nrm2: float | None = None
         for val in (0, 1):
             idx[qarg] = val
             branch = t[tuple(idx)].ravel()
@@ -349,8 +318,6 @@ class Statevec(DenseState):
         else:
             raise ValueError(f"Both branches for qubit {qarg} have zero norm — qubit may not be separable.")
 
-        assert br is not None
-        assert nrm2 is not None
 
         br /= math.sqrt(nrm2)
 
