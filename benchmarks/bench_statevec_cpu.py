@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 from graphix.clifford import Clifford
-from graphix.states import BasicStates
 from graphix.sim.statevec import Statevec
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from pytest_benchmark import BenchmarkFixture

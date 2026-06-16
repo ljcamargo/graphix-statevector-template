@@ -23,7 +23,7 @@ def _gpu_available() -> bool:
     try:
         import cupy as cp  # noqa: PLC0415
 
-        cp.zeros(1)
+        cp.zeros(1)  # type: ignore[attr-defined]
     except Exception:  # noqa: BLE001
         return False
     else:

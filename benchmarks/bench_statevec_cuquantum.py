@@ -2,22 +2,24 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
+import cupy as _cp
 import numpy as np
-import cupy as cp
 import pytest
 from graphix.clifford import Clifford
 from graphix.states import BasicStates
 
 from graphix_statevec_cuquantum import Statevec
 
+cp: Any = _cp
+
 
 def _gpu_available() -> bool:
     try:
         import cupy as cp  # noqa: PLC0415
 
-        cp.zeros(1)
+        cp.zeros(1)  # type: ignore[attr-defined]
     except Exception:  # noqa: BLE001
         return False
     else:

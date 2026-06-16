@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
-from graphix_mqtbench import Benchmark, BenchmarkName, OptimizationPass
 from graphix.sim.statevec import StatevectorBackend as CPUBackend
+from graphix_mqtbench import Benchmark, BenchmarkName
 
 if TYPE_CHECKING:
     from pytest_benchmark import BenchmarkFixture

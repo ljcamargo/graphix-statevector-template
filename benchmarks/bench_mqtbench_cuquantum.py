@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-import cupy as cp
+import cupy as _cp
 import numpy as np
 import pytest
-from graphix_mqtbench import Benchmark, BenchmarkName, OptimizationPass
+from graphix_mqtbench import Benchmark, BenchmarkName
 
 from graphix_statevec_cuquantum import StatevectorBackend
+
+cp: Any = _cp
 
 if TYPE_CHECKING:
     from pytest_benchmark import BenchmarkFixture
