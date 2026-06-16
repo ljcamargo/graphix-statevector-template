@@ -8,7 +8,6 @@ from __future__ import annotations
 import copy
 import dataclasses
 import math
-from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Self, Tuple, cast, override
 
@@ -18,7 +17,7 @@ from cuquantum import cudaDataType  # type: ignore[import-not-found]
 from cuquantum.bindings import custatevec  # type: ignore[import-not-found]
 from graphix.sim.base_backend import DenseState, DenseStateBackend, Matrix
 from graphix.sim.statevec import Statevec as BaseStatevec
-from graphix.states import BasicStates, State
+from graphix.states import BasicStates
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -33,7 +32,7 @@ _LAYOUT = custatevec.MatrixLayout.ROW
 _COMPUTE = custatevec.ComputeType.COMPUTE_DEFAULT
 
 # Global cuStateVec handle (created once, reused across Statevec instances)
-_HANDLE: int | None = None
+_HANDLE: int = custatevec.create()
 
 # Common quantum gates
 _CZ = cp.array(
@@ -44,9 +43,6 @@ _PLUS_STATE = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)
 
 
 def _handle() -> int:
-    global _HANDLE
-    if _HANDLE is None:
-        _HANDLE = custatevec.create()
     return _HANDLE
 
 
@@ -181,7 +177,7 @@ class Statevec(DenseState):
 
     @override
     def flatten(self) -> Matrix:
-        return cast(Matrix, cp.asnumpy(self.psi[: 1 << self._nqubit]))
+        return cast("Matrix", cp.asnumpy(self.psi[: 1 << self._nqubit]))
 
     # -- add_nodes ------------------------------------------------------- #
 
@@ -226,9 +222,8 @@ class Statevec(DenseState):
     @override
     def expectation_single(self, op: Matrix, loc: int) -> complex:
         gate = cp.asarray(op, dtype=cp.complex128)
-        result = self._expectation(gate, [loc])
         # Return full complex value, not just real part
-        return result
+        return self._expectation(gate, [loc])
 
     # -- remove_qubit ---------------------------------------------------- #
 
