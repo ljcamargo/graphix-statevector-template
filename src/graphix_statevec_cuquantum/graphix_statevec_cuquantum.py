@@ -125,6 +125,32 @@ class Statevec(DenseState):
     def nqubit(self) -> int:
         return self._nqubit
 
+    # -- capacity management --------------------------------------------- #
+
+    def _ensure_capacity(self, required_qubits: int) -> None:
+        """Ensure the state vector has capacity for at least `required_qubits` qubits.
+
+        If current capacity is insufficient, reallocate with larger padding.
+
+        Parameters
+        ----------
+        required_qubits : int
+            Minimum number of qubits needed.
+        """
+        required_size = 1 << required_qubits
+        current_capacity = 1 << self.max_space
+
+        if required_size <= current_capacity:
+            return
+
+        # Grow capacity: at least double or add 1 qubit, whichever is larger
+        new_max = max(self.max_space + 1, required_qubits)
+        new_psi = cp.zeros(1 << new_max, dtype=cp.complex128)
+        new_psi[: 1 << self._nqubit] = self.psi[: 1 << self._nqubit]
+        self.psi = new_psi
+        self.max_space = new_max
+
+    # -- public methods -------------------------------------------------- #
     # -- flatten --------------------------------------------------------- #
 
     @override
@@ -139,19 +165,15 @@ class Statevec(DenseState):
         if nqubit == 1 and data is BasicStates.PLUS:
             old_size = 1 << self._nqubit
             new_size = old_size * 2
+            new_nqubit = self._nqubit + 1
 
-            # Ensure we have enough space
-            if new_size > (1 << self.max_space):
-                new_max = max(self.max_space + 1, self._nqubit + 1)
-                new_psi = cp.zeros(1 << new_max, dtype=cp.complex128)
-                new_psi[:old_size] = self.psi[:old_size]
-                self.psi = new_psi
-                self.max_space = new_max
+            # Ensure we have enough capacity
+            self._ensure_capacity(new_nqubit)
 
             # Use cp.kron for correct tensor product with |+>
             new_state = cp.kron(self.psi[:old_size], _PLUS_STATE)
             self.psi[:new_size] = new_state
-            self._nqubit += 1
+            self._nqubit = new_nqubit
         else:
             # General case: use the standard tensor product
             sv = Statevec(nqubit=nqubit, data=data)
@@ -219,21 +241,16 @@ class Statevec(DenseState):
 
     def tensor(self, other: Statevec) -> None:
         """In-place tensor product ``self ⊗ other``."""
-        ns = self._nqubit
-        no = other._nqubit
-        total = ns + no
+        n_self = self._nqubit
+        n_other = other._nqubit
+        n_total = n_self + n_other
 
-        if total > self.max_space:
-            new_max = total
-            buf = cp.zeros(1 << new_max, dtype=cp.complex128)
-            buf[: 1 << ns] = self.psi[: 1 << ns]
-            self.psi = buf
-            self.max_space = new_max
+        self._ensure_capacity(n_total)
 
-        a = self.psi[: 1 << ns]
-        b = other.psi[: 1 << no]
-        self.psi[: 1 << total] = cp.kron(a, b)
-        self._nqubit = total
+        a = self.psi[: 1 << n_self]
+        b = other.psi[: 1 << n_other]
+        self.psi[: 1 << n_total] = cp.kron(a, b)
+        self._nqubit = n_total
 
     # -- cuQuantum helpers ----------------------------------------------- #
 
