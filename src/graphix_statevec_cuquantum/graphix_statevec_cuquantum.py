@@ -332,8 +332,6 @@ class Statevec(DenseState):
         t = self._active_psi.reshape((2,) * n)
 
         idx: list[slice | int] = [slice(None)] * n
-        br: cp.ndarray | None = None
-        nrm2: float | None = None
         for val in (0, 1):
             idx[qarg] = val
             branch = t[tuple(idx)].ravel()
