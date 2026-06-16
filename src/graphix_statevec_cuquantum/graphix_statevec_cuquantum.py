@@ -240,7 +240,7 @@ class Statevec(DenseState):
             self._ensure_capacity(new_nqubit)
 
             # Use cp.kron for correct tensor product with |+>
-            new_state = cp.kron(self.psi[:old_size], _PLUS_STATE)
+            new_state = cp.kron(self._active_psi, _PLUS_STATE)
             self.psi[:new_size] = new_state
             self._nqubit = new_nqubit
         else:
