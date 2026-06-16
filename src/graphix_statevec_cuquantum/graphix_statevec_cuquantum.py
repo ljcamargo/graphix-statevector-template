@@ -232,9 +232,8 @@ class Statevec(DenseState):
             State in which to initialise the new qubits.
         """
         if nqubit == 1 and data is BasicStates.PLUS:
-            old_size = 1 << self._nqubit
-            new_size = old_size * 2
             new_nqubit = self._nqubit + 1
+            new_size = 1 << new_nqubit
 
             # Ensure we have enough capacity
             self._ensure_capacity(new_nqubit)
