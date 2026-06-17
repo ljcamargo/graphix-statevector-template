@@ -264,7 +264,9 @@ def test_pattern_simulator(fx_bg: PCG64, jumps: int) -> None:
     pattern = rand_circuit(nqubits, depth=5, rng=rng).transpile().pattern
     pattern.remove_pauli_measurements()
 
-    sv_test = pattern.simulate_pattern(backend=StatevectorBackend(), rng=rng)
+    sv_test = pattern.simulate_pattern(
+        backend=StatevectorBackend.with_capacity(max_qubits=pattern.max_space()), rng=rng
+    )
     sv_ref = pattern.simulate_pattern(backend=StatevectorBackendCPU(), rng=rng)
 
     assert sv_ref.isclose(StatevecCPU(data=sv_test.flatten()))
