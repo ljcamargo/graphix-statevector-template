@@ -9,7 +9,6 @@ import copy
 import dataclasses
 import math
 from dataclasses import dataclass
-from collections.abc import Collection
 from typing import TYPE_CHECKING, Any, Self, override
 
 import cupy as _cp
@@ -24,7 +23,7 @@ from graphix.states import BasicStates
 cp: Any = _cp
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Collection, Sequence
 
     from graphix.sim.data import Data
 
@@ -428,7 +427,7 @@ class Statevec(DenseState):
         """
         n = self._nqubit
         if n == 0:
-            return 1.0 + 0.0j
+            return 1
         active = self._active_psi
         t = _msb_to_lsb(targets, n)
         h = _HANDLE
