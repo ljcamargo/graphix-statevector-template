@@ -9,7 +9,7 @@ import copy
 import dataclasses
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Self, Tuple, override  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Self, override
 
 import cupy as _cp
 import numpy as np
