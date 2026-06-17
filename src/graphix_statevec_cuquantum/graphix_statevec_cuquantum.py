@@ -45,7 +45,7 @@ _CZ = cp.array(
 _PLUS_STATE = cp.array([1.0, 1.0], dtype=cp.complex128) / cp.sqrt(2.0)
 
 
-def _msb_to_lsb(targets: list[int], nq: int) -> Tuple[int, ...]:  # noqa: UP006
+def _msb_to_lsb(targets: list[int], nq: int) -> tuple[int, ...]:
     """Convert qubit indices from Graphix MSB convention to cuQuantum LSB convention.
 
     Parameters
