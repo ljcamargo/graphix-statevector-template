@@ -9,7 +9,7 @@ import copy
 import dataclasses
 import math
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Self, Tuple, cast, override  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Self, Tuple, override  # noqa: UP035
 
 import cupy as _cp
 import numpy as np
@@ -299,8 +299,8 @@ class Statevec(DenseState):
         idx: list[slice | int] = [slice(None)] * n
         for val in (0, 1):
             idx[qarg] = val
-            branch = t[idx].ravel()
-            branch_nrm2 = cp.sum(cp.abs(branch) ** 2)
+            branch = t[tuple(idx)].ravel()
+            branch_nrm2 = float(cp.sum(cp.abs(branch) ** 2))
             if not math.isclose(branch_nrm2, 0, abs_tol=1e-15):
                 br = branch
                 nrm2 = branch_nrm2
@@ -532,8 +532,8 @@ class Statevec(DenseState):
         """
         a = self.psi[: 1 << self._nqubit]
         b = other.psi[: 1 << other._nqubit]
-        ip: float = cp.dot(a.conj(), b)
-        return ip
+        ip = float(cp.dot(a.conj(), b))
+        return ip.real**2 + ip.imag**2
 
     def copy(self) -> Statevec:
         """Return a deep copy of the state.
@@ -580,4 +580,6 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
             gpu_state = state.psi[: 1 << state.nqubit].copy()
             state_init = Statevec(data=gpu_state, nqubit=state._nqubit, max_space=max_qubits)
 
-        return cls(state_init, **kwargs)
+        backend = cls(**kwargs)
+        object.__setattr__(backend, "state", state_init)  # noqa: PLC2801
+        return backend
