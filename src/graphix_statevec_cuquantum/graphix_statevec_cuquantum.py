@@ -177,7 +177,8 @@ class Statevec(DenseState):
         Matrix
             Numpy array of shape ``(2**nqubit,)`` with dtype ``complex128``.
         """
-        return cast("Matrix", cp.asnumpy(self.psi[: 1 << self._nqubit]))
+        result: Matrix = cp.asnumpy(self.psi[: 1 << self._nqubit])
+        return result
 
     # -- add_nodes ------------------------------------------------------- #
 
@@ -298,8 +299,8 @@ class Statevec(DenseState):
         idx: list[slice | int] = [slice(None)] * n
         for val in (0, 1):
             idx[qarg] = val
-            branch = t[tuple(idx)].ravel()
-            branch_nrm2 = float(cp.sum(cp.abs(branch) ** 2))
+            branch = t[idx].ravel()
+            branch_nrm2 = cp.sum(cp.abs(branch) ** 2)
             if not math.isclose(branch_nrm2, 0, abs_tol=1e-15):
                 br = branch
                 nrm2 = branch_nrm2
@@ -327,7 +328,7 @@ class Statevec(DenseState):
         if i == j or self._nqubit == 0:
             return
 
-        t = self._active_psi.reshape((2,) * self._nqubit)
+        t = self._active_psi.reshape((2,) * self.nqubit)
         self._active_psi = cp.swapaxes(t, i, j).ravel()
 
     # -- tensor ---------------------------------------------------------- #
@@ -342,14 +343,12 @@ class Statevec(DenseState):
         other : Statevec
             State to tensor with ``self``.
         """
-        n_self = self._nqubit
-        n_other = other._nqubit
-        n_total = n_self + n_other
+        n_total = self.nqubit + other.nqubit
 
         self._ensure_capacity(n_total)
 
-        a = self.psi[: 1 << n_self]
-        b = other.psi[: 1 << n_other]
+        a = self._active_psi
+        b = other._active_psi
         self.psi[: 1 << n_total] = cp.kron(a, b)
         self._nqubit = n_total
 
@@ -365,7 +364,7 @@ class Statevec(DenseState):
         targets : list of int
             Target qubit indices.
         """
-        n = self._nqubit
+        n = self.nqubit
         if n == 0:
             return
         active = self._active_psi
@@ -480,7 +479,7 @@ class Statevec(DenseState):
         the state is renormalised to unit length.
         """
         a = self.psi[: 1 << self._nqubit]
-        a /= math.sqrt(float(cp.sum(cp.abs(a) ** 2)))
+        a /= math.sqrt(cp.sum(cp.abs(a) ** 2))
 
     def dims(self) -> tuple[int, ...]:
         """Return the tensor shape of the state.
@@ -533,8 +532,8 @@ class Statevec(DenseState):
         """
         a = self.psi[: 1 << self._nqubit]
         b = other.psi[: 1 << other._nqubit]
-        ip = float(cp.dot(a.conj(), b))
-        return ip.real**2 + ip.imag**2
+        ip: float = cp.dot(a.conj(), b)
+        return ip
 
     def copy(self) -> Statevec:
         """Return a deep copy of the state.
@@ -578,9 +577,7 @@ class StatevectorBackend(DenseStateBackend[Statevec]):
         if state is None:
             state_init = Statevec(nqubit=0, max_space=max_qubits)
         else:
-            gpu_state = state.psi[: 1 << state._nqubit].copy()
+            gpu_state = state.psi[: 1 << state.nqubit].copy()
             state_init = Statevec(data=gpu_state, nqubit=state._nqubit, max_space=max_qubits)
 
-        backend = cls(**kwargs)
-        object.__setattr__(backend, "state", state_init)  # noqa: PLC2801
-        return backend
+        return cls(state_init, **kwargs)
