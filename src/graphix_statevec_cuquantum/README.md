@@ -6,7 +6,7 @@ GPU-accelerated statevector backend for Graphix pattern simulation, built on NVI
 
 - NVIDIA GPU with CUDA 12.x
 - Python ≥ 3.13
-- `cuquantum-python-cu12` (≥ 24.03) — pre-built wheels, no CUDA toolkit needed at build time
+- `cuquantum-python-cu12` (≥ 24.3) — pre-built wheels, no CUDA toolkit needed at build time
 - `cupy-cuda12x` (≥ 13.0)
 
 ## Installation
