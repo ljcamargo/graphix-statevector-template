@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# This module benchmarks the CPU statevector simulator against the MQTBench suite.
 from typing import TYPE_CHECKING
 
 import numpy as np

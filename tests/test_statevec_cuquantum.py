@@ -145,7 +145,7 @@ class TestStatevecCuQuantum:
         sv_test = Statevec(nqubit=0)
         psi_ref = np.array([1.0 + 0.0j])
 
-        for _ in range(max_qubits):
+        for _ in range(max_qubits):  # Add a node at each iteration
             data = generate_rnd_data(fx_rng, nqubits=1)
             psi_ref = np.kron(psi_ref, data)
             sv_test.add_nodes(1, data)
@@ -165,6 +165,8 @@ class TestStatevecCuQuantum:
             ),
         ],
     )
+    # In previous testcase, branch 1 is 0 (psi_10 == psi_11 == 0), and first element
+    # of branch 0 is 0 too (psi_00 == 0)!
     def test_remove_qubit(self, sv: Statevec, q: int, sv_ref: Statevec) -> None:
         sv.remove_qubit(q)
         assert np.allclose(sv.flatten(), sv_ref.flatten())
@@ -228,7 +230,7 @@ class TestStatevecCPU:
         sv_test = Statevec(nqubit=0)
         sv_ref = StatevecCPU(nqubit=0)
 
-        for _ in range(max_qubits):
+        for _ in range(max_qubits):  # Add a node at each iteration
             data = generate_rnd_data(fx_rng, nqubits=1)
             sv_test.add_nodes(1, data)
             sv_ref.add_nodes(1, data)
@@ -244,7 +246,7 @@ class TestStatevecCPU:
         sv_test = Statevec(generate_rnd_data(fx_rng, nqubits))
         sv_ref = StatevecCPU(data=sv_test.flatten())
         q = 0
-        for _ in range(nqubits - 1):
+        for _ in range(nqubits - 1):  # Remove a node at each iteration
             sv_test.evolve_single(projector, q)
             sv_test.remove_qubit(q)
             sv_ref.evolve_single(projector, q)

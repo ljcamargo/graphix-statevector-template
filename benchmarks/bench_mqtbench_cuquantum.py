@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# This module benchmarks the GPU statevector simulator against the MQTBench suite
+# with proper GPU synchronization for accurate timing.
 from typing import TYPE_CHECKING, Any
 
 import cupy as _cp
